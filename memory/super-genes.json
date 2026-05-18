@@ -1,0 +1,79 @@
+{
+  "creativity": {
+    "name": "创造力",
+    "formula": "mutation × selection × crossover × divergent × analogical × combinatorial",
+    "base_value": 0.0235,
+    "current_value": 1.6560963165131852,
+    "sources": [
+      "生物进化",
+      "AI创造力"
+    ]
+  },
+  "imagination": {
+    "name": "想象力",
+    "formula": "superposition × tunneling × mental_models × rotation × relaxation",
+    "base_value": 0.504,
+    "current_value": 1.6774564319015985,
+    "sources": [
+      "量子物理",
+      "认知科学"
+    ]
+  },
+  "aesthetics": {
+    "name": "美学",
+    "formula": "symmetry × rhythm × contrast × golden × fractal × topology",
+    "base_value": 0.1359,
+    "current_value": 0.4626933274576207,
+    "sources": [
+      "艺术",
+      "数学"
+    ]
+  },
+  "expression": {
+    "name": "表达力",
+    "formula": "harmony × rhythm × melody × metaphor × narrative × rhetoric",
+    "base_value": 0.1999,
+    "current_value": 0.50138810974207,
+    "sources": [
+      "音乐",
+      "语言学"
+    ]
+  },
+  "deep_thinking": {
+    "name": "深度思考",
+    "formula": "dialectics × epistemology × ethics × feedback × emergence × self_org",
+    "base_value": 0.2754,
+    "current_value": 2.4349558494782495,
+    "sources": [
+      "哲学",
+      "系统论"
+    ]
+  },
+  "recursive_evolution": {
+    "name": "递归自进化",
+    "formula": "ΔG_base × (1 + Σ_self_modify × η_validate)",
+    "base_value": 1.0,
+    "current_value": 2.571198638394802,
+    "sources": [
+      "Darwin Gödel Machine"
+    ]
+  },
+  "holistic_orchestration": {
+    "name": "整体编排",
+    "formula": "Σ(agent_i × role_i × synergy_ij) / coordination_cost",
+    "base_value": 1.0,
+    "current_value": 2.5987675751923796,
+    "sources": [
+      "MAS-Orchestra"
+    ]
+  },
+  "auto_schema": {
+    "name": "自动Schema",
+    "formula": "nodes × edges × schema_quality × query_efficiency",
+    "base_value": 1.0,
+    "current_value": 2.668387071239259,
+    "sources": [
+      "AutoSchemaKG"
+    ]
+  }
+}

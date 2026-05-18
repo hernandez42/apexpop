@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "extracted_at": "2026-05-17T09:30:00+08:00",
+  "sources": ["langchain-ai/langchain", "mem0ai/mem0", "microsoft/autogen"],
+  "genes": [
+    {
+      "name": "Runnable序列组合",
+      "category": "协议",
+      "source": "langchain-ai/langchain",
+      "strength": 0.92,
+      "mechanism": "将任意函数/对象包装为统一的Runnable接口，通过 | 操作符声明式组合成链。每个Runnable自动获得sync/async/batch/stream能力。核心是RunnableSequence类，将first/middle/last拆分以保持类型推导。",
+      "code_snippet": "class RunnableSequence(RunnableSerializable[Input, Output]):\n    first: Runnable[Input, Any]\n    middle: list[Runnable[Any, Any]] = Field(default_factory=list)\n    last: Runnable[Any, Output]\n    \n    def __or__(self, other):  # pipe operator\n        return RunnableSequence(self, other)",
+      "application": "MiMoClaw的技能系统可以采用Runnable模式：每个skill包装为Runnable，用 | 连接形成处理管道。例如：web_fetch | content_extract | summary | memory_store。好处：自动获得重试、并发、流式输出。"
+    },
+    {
+      "name": "ContextVar隐式传递配置",
+      "category": "协议",
+      "source": "langchain-ai/langchain",
+      "strength": 0.88,
+      "mechanism": "使用Python ContextVar实现配置的自动继承。父Runnable设置config后，子Runnable通过var_child_runnable_config自动获取，无需显式传递。config通过merge_configs合并而非替换，支持标签/元数据的层层累积。",
+      "code_snippet": "var_child_runnable_config: ContextVar[RunnableConfig | None] = ContextVar('child_runnable_config', default=None)\n\n# 父设置tags，子自动继承并可追加:\n# chain.invoke(input, config={\"tags\": [\"parent\"]})\n# ensure_config({\"tags\": [\"child\"]}) -> {\"tags\": [\"parent\", \"child\"]}",
+      "application": "MiMoClaw的session上下文传递：用ContextVar实现配置的隐式继承，避免在每个函数中显式传递session_id、user_id等。子代理自动继承父代理的安全策略和配置。"
+    },
+    {
+      "name": "PhasedBatchPipeline记忆写入",
+      "category": "共进化",
+      "source": "mem0ai/mem0",
+      "strength": 0.95,
+      "mechanism": "8阶段流水线写入记忆：Phase0上下文收集 → Phase1已有记忆检索 → Phase2 LLM提取(单次调用) → Phase3批量嵌入 → Phase4+5哈希去重 → Phase6批量持久化 → Phase7实体链接 → Phase8消息存储。关键：LLM只调用一次，批量操作减少IO。",
+      "code_snippet": "# Phase 2: LLM extraction (single call)\nresponse = self.llm.generate_response(\n    messages=[{\"role\": \"system\", \"content\": system_prompt},\n              {\"role\": \"user\", \"content\": user_prompt}],\n    response_format={\"type\": \"json_object\"},\n)\n# Phase 3: Batch embed all extracted memory texts\nmem_embeddings_list = self.embedding_model.embed_batch(mem_texts, \"add\")\n# Phase 4: Hash dedup\nmem_hash = hashlib.md5(text.encode()).hexdigest()\nif mem_hash in existing_hashes: continue",
+      "application": "MiMoClaw的记忆写入优化：1) 每次交互只调用一次LLM提取关键信息 2) 批量嵌入减少API调用 3) MD5哈希去重防止重复存储 4) 实体链接建立知识图谱。可直接移植到memory_store的后端。"
+    },
+    {
+      "name": "实体知识图谱自动构建",
+      "category": "共进化",
+      "source": "mem0ai/mem0",
+      "strength": 0.9,
+      "mechanism": "从记忆文本中自动提取实体(人物/地点/组织)，在独立entity_store中建立知识图谱。每个记忆链接到相关实体，支持跨记忆的实体聚合。实体去重基于0.95相似度阈值。",
+      "code_snippet": "def _upsert_entity(self, entity_text, entity_type, memory_id, filters):\n    entity_embedding = self.embedding_model.embed(entity_text, \"add\")\n    existing = self.entity_store.search(query=entity_text, vectors=entity_embedding, top_k=1)\n    if existing and existing[0].score >= 0.95:\n        # Update existing entity's linked_memory_ids\n        linked_ids = payload.get(\"linked_memory_ids\", [])\n        if memory_id not in linked_ids:\n            linked_ids.append(memory_id)\n            self.entity_store.update(vector_id=match.id, payload=payload)\n    else:\n        # Create new entity\n        self.entity_store.insert(vectors=[entity_embedding], payloads=[{...}])",
+      "application": "MiMoClaw的实体记忆系统：每次memory_store时自动提取实体，在独立的entity_store中建立关联。搜索时不仅匹配文本，还通过实体关联找到相关记忆。例如存储'张三说要买小米SU7'，自动建立'张三'→'小米SU7'的实体链接。"
+    },
+    {
+      "name": "消息路由装饰器",
+      "category": "协议",
+      "source": "microsoft/autogen",
+      "strength": 0.88,
+      "mechanism": "@message_handler装饰器自动根据消息类型路由到对应处理函数。支持类型安全检查、match函数二次路由、strict模式。装饰器在类定义时收集所有handler，运行时通过类型匹配分发。",
+      "code_snippet": "def message_handler(func=None, *, strict=True, match=None):\n    def decorator(func):\n        type_hints = get_type_hints(func)\n        target_types = get_types(type_hints[\"message\"])\n        return_types = get_types(type_hints[\"return\"])\n        \n        @wraps(func)\n        async def wrapper(self, message, ctx):\n            if type(message) not in target_types:\n                raise CantHandleException(...)\n            return await func(self, message, ctx)\n        \n        wrapper.target_types = list(target_types)\n        wrapper.produces_types = list(return_types)\n        wrapper.is_message_handler = True\n        wrapper.router = match or (lambda _m, _ctx: True)\n        return wrapper",
+      "application": "MiMoClaw的事件处理：用装饰器模式注册消息处理器，根据消息类型自动路由。例如：@on_message(FetchRequest) → 自动调用web_fetch，@on_message(MemoryQuery) → 自动调用memory_recall。比现在的if-elif链更优雅。"
+    },
+    {
+      "name": "Topic发布订阅解耦",
+      "category": "共进化",
+      "source": "microsoft/autogen",
+      "strength": 0.85,
+      "mechanism": "通过TopicId实现agent间的松耦合通信。publish_message广播到topic下所有订阅者，send_message点对点发送。Topic有namespace和type，支持多级topic层级。消息通过Subscription匹配路由。",
+      "code_snippet": "class SingleThreadedAgentRuntime(AgentRuntime):\n    async def publish_message(self, message, topic_id, *, sender=None):\n        # 广播到所有订阅该topic的agent\n        ...\n    async def send_message(self, message, recipient, *, sender=None):\n        # 点对点发送\n        ...\n\n# Topic结构:\n@dataclass\nclass TopicId:\n    type: str\n    source: str  # namespace",
+      "application": "MiMoClaw的多Agent协作：用Topic模式实现子代理间的松耦合通信。例如：'evolution-result' topic广播进化结果到所有监听的子代理，'task-completed' topic通知主代理任务完成。比直接函数调用更灵活。"
+    },
+    {
+      "name": "哈希去重防幻觉机制",
+      "category": "安全",
+      "source": "mem0ai/mem0",
+      "strength": 0.82,
+      "mechanism": "用MD5哈希对记忆内容去重。UUID映射为整数ID防止LLM产生幻觉ID。现有记忆的哈希在写入前检查，批内也去重。三重防线：UUID→整数、已有哈希检查、批内去重。",
+      "code_snippet": "# Anti-hallucination: Map UUIDs to integers\nexisting_memories = []\nuuid_mapping = {}\nfor idx, mem in enumerate(existing_results):\n    uuid_mapping[str(idx)] = mem.id  # '0', '1', '2' instead of UUIDs\n    existing_memories.append({\"id\": str(idx), \"text\": mem.payload.get(\"data\", \"\")})\n\n# Hash dedup\nmem_hash = hashlib.md5(text.encode()).hexdigest()\nif mem_hash in existing_hashes or mem_hash in seen_hashes:\n    continue  # Skip duplicate",
+      "application": "MiMoClaw的记忆去重：1) 记忆写入前计算MD5，已存在则跳过 2) LLM提取时用整数ID替代UUID防幻觉 3) 批内去重。防止'张三喜欢小米'被存储10次。"
+    },
+    {
+      "name": "InterventionHandler安全拦截",
+      "category": "安全",
+      "source": "microsoft/autogen",
+      "strength": 0.8,
+      "mechanism": "在消息发送前插入拦截层，InterventionHandler可以修改、丢弃或放行消息。所有消息必须经过handler链，返回None时警告。支持多级拦截。",
+      "code_snippet": "class SingleThreadedAgentRuntime(AgentRuntime):\n    def __init__(self, intervention_handlers=None):\n        self._intervention_handlers = intervention_handlers or []\n    \n    async def _process_message(self, envelope):\n        for handler in self._intervention_handlers:\n            result = await handler.on_send(envelope)\n            if result is None:\n                warnings.warn(f'Handler returned None')\n            elif isinstance(result, DropMessage):\n                raise MessageDroppedException()\n            envelope = result",
+      "application": "MiMoClaw的安全拦截链：在消息处理前设置拦截器。1) 安全过滤器检查prompt injection 2) 速率限制器控制调用频率 3) 权限检查器验证操作合法性。任何拦截器都可以拒绝消息。"
+    },
+    {
+      "name": "ConfigurableField动态配置",
+      "category": "自修改",
+      "source": "langchain-ai/langchain",
+      "strength": 0.78,
+      "mechanism": "Runnable支持运行时动态替换内部组件。通过configurable_fields()标记可配置字段，调用时通过config['configurable']注入不同的实现。支持alternatives模式选择备选方案。",
+      "code_snippet": "# Runnable的configurable_fields方法:\n# 将内部字段标记为可在运行时替换\nchain.configurable_fields(\n    llm=ConfigurableField(id=\"llm\", name=\"LLM Model\"),\n    prompt=ConfigurableField(id=\"prompt\", name=\"Prompt Template\")\n)\n# 调用时替换:\nchain.invoke(input, config={\"configurable\": {\"llm\": ChatGPT()}})",
+      "application": "MiMoClaw的自修改机制：核心组件标记为ConfigurableField，进化操作时通过config注入新实现。例如：将embedding模型标记为可配置，进化时尝试更好的embedding方案，失败则回滚到原方案。"
+    },
+    {
+      "name": "向量搜索+BM25混合检索",
+      "category": "探索",
+      "source": "mem0ai/mem0",
+      "strength": 0.86,
+      "mechanism": "search方法同时支持向量相似度搜索和BM25关键词搜索。支持高级元数据过滤(AND/OR/NOT/eq/ne/gt/lt/in/contains)。可选reranker二次排序。阈值过滤低于threshold的结果。",
+      "code_snippet": "def search(self, query, *, top_k=20, filters=None, threshold=0.1, rerank=False):\n    # 向量搜索\n    original_memories = self._search_vector_store(query, effective_filters, limit, threshold)\n    # 可选rerank\n    if rerank and self.reranker and original_memories:\n        reranked_memories = self.reranker.rerank(query, original_memories, limit)\n    # 高级过滤\n    processed_filters = self._process_metadata_filters(effective_filters)\n    # 支持: AND, OR, NOT, eq, ne, gt, gte, lt, lte, in, contains",
+      "application": "MiMoClaw的记忆检索升级：当前只有memory_recall的向量搜索，可以增加BM25关键词匹配作为补充。对于精确匹配(如人名、日期)用BM25，对于语义匹配用向量搜索，两者加权融合。"
+    }
+  ]
+}

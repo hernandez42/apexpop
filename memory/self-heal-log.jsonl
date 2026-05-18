@@ -1,0 +1,7 @@
+{"timestamp": "2026-05-18T06:36:59.920736", "level": "INFO", "message": "🧬 补充基因: 安全"}
+{"timestamp": "2026-05-18T06:36:59.921120", "level": "WARN", "message": "⚠️ [gene_gap_fix] 执行但未生效 (连续第1次)"}
+{"timestamp": "2026-05-18T06:36:59.921328", "level": "INFO", "message": "🧬 补充基因: 安全"}
+{"timestamp": "2026-05-18T06:36:59.921595", "level": "WARN", "message": "⚠️ [gene_gap_fix] 执行但未生效 (连续第2次)"}
+{"timestamp": "2026-05-18T06:36:59.921777", "level": "INFO", "message": "🧬 补充基因: 安全"}
+{"timestamp": "2026-05-18T06:36:59.922016", "level": "ERROR", "message": "🔴 同一修复 [gene_gap_fix:{\"category\": \"\\u5b89\\u5168\"}] 连续失败 3 次 → 触发熔断"}
+{"timestamp": "2026-05-18T06:36:59.922046", "level": "WARN", "message": "⚠️ [gene_gap_fix] 执行但未生效 (连续第3次)"}

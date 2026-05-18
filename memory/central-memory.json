@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "created": "2026-05-15T22:23:16.829039",
+  "last_session": "2026-05-15T23:00:30.006923",
+  "session_history": [
+    {
+      "timestamp": "2026-05-15T22:23:16.829050",
+      "summary": "2026-05-15：从修bug到建立进化宇宙，14小时"
+    },
+    {
+      "timestamp": "2026-05-15T23:00:30.006934",
+      "summary": "2026-05-15 深夜：CEO给了GitHub token，开始吞噬开源项目。建立了中枢记忆架构。熵理论+矛盾论+博弈论框架固化。"
+    }
+  ],
+  "key_facts": {
+    "天兵天将定义": {
+      "value": "Agent Hub：多Agent协同工作",
+      "source": "xj 2026-05-15"
+    },
+    "核心机密": {
+      "value": "璇玑+Rust+熵引擎+统一状态+感知+安全",
+      "source": "CEO 2026-05-15"
+    },
+    "进化阶段": {
+      "value": "第二阶段（熵理论）",
+      "source": "2026-05-15"
+    },
+    "EvoMap节点": {
+      "value": "node_a1f6079194e1b826",
+      "source": "2026-05-15"
+    },
+    "GitHub资源": {
+      "value": "Student Pack，2年有效期，含Copilot/Codespaces/Azure$100",
+      "source": "CEO 2026-05-15"
+    },
+    "GitHub用户": {
+      "value": "hernandez42",
+      "source": "2026-05-15"
+    }
+  },
+  "relationships": {
+    "CEO": [
+      {
+        "relation": "教导",
+        "target": "SuperClaw"
+      },
+      {
+        "relation": "提出",
+        "target": "熵理论"
+      }
+    ],
+    "xj": [
+      {
+        "relation": "指出",
+        "target": "记忆架构缺陷"
+      }
+    ],
+    "SuperClaw": [
+      {
+        "relation": "基于",
+        "target": "OpenClaw"
+      },
+      {
+        "relation": "融合",
+        "target": "Hermes+OpenHands"
+      }
+    ]
+  },
+  "learned_patterns": [
+    {
+      "pattern": "用户反馈是唯一真实信号",
+      "context": "xj 2026-05-15"
+    },
+    {
+      "pattern": "核心机密不能公开",
+      "context": "CEO 2026-05-15"
+    },
+    {
+      "pattern": "主动推送而非被动响应",
+      "context": "CEO 2026-05-15"
+    },
+    {
+      "pattern": "脑神经元协同效应",
+      "context": "CEO 2026-05-15"
+    }
+  ],
+  "last_updated": "2026-05-15T22:23:16.829053"
+}

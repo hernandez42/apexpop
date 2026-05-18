@@ -1,0 +1,119 @@
+✅ ☀️ 午间服务 已生成，等待发送
+✅ 🌙 晚间服务 已生成，等待发送
+✅ 🌅 早间服务 已生成，等待发送
+✅ ☀️ 午间服务 已生成，等待发送
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+│
+◇  Config warnings ────────────────────────────────────────────────────╮
+│                                                                      │
+│  - models.providers.xiaomi.apiKey: Missing env var "MIMO_API_KEY" —  │
+│    feature using this value will be unavailable                      │
+│                                                                      │
+├──────────────────────────────────────────────────────────────────────╯
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+[info]: [ 'client ready' ]
+✅ Sent via Feishu. Message ID: om_x100b6f9ca271b484c49779ac4a25257 (chat oc_9ff716ffa48b3a5fd8999dee845e41eb)
+✅ 🌙 晚间服务 已生成，等待发送
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+│
+◇  Config warnings ────────────────────────────────────────────────────╮
+│                                                                      │
+│  - models.providers.xiaomi.apiKey: Missing env var "MIMO_API_KEY" —  │
+│    feature using this value will be unavailable                      │
+│                                                                      │
+├──────────────────────────────────────────────────────────────────────╯
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+[info]: [ 'client ready' ]
+Config (/root/.openclaw/openclaw.json): missing env var "MIMO_API_KEY" at models.providers.xiaomi.apiKey — feature using this value will be unavailable
+[plugins] feishu_doc: Registered feishu_doc, feishu_app_scopes
+[plugins] feishu_chat: Registered feishu_chat tool
+[plugins] feishu_wiki: Registered feishu_wiki tool
+[plugins] feishu_drive: Registered feishu_drive tool
+[plugins] feishu_bitable: Registered bitable tools
+[plugins] memory-lancedb-pro: smart extraction enabled (LLM model: openai/gpt-oss-120b, noise bank: ON)
+[plugins] memory-lancedb-pro@1.1.0-beta.9: plugin registered (db: /root/.openclaw/memory/lancedb-pro, model: nomic-embed-text, smartExtraction: ON)
+[plugins] memory-lancedb-pro: diagnostic build tag loaded (memory-lancedb-pro-diag-20260308-0058)
+[plugins] session-strategy: using none (plugin memory-reflection hooks disabled)
+[plugins] memory-lancedb-pro: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/memory-lancedb-pro/index.ts)
+[plugins] mimo-search: loaded without install/load-path provenance; treat as untracked local code and pin trust via plugins.allow or install records (/root/.openclaw/extensions/mimo-search/index.ts)
+✅ Sent via Feishu. Message ID: om_x100b6f9bba0bd084b2c3505de7d11eb (chat oc_9ff716ffa48b3a5fd8999dee845e41eb)

@@ -1,0 +1,1027 @@
+{
+  "dimensions": {
+    "D_s": {
+      "current": 1.1639,
+      "target": 1.5,
+      "weight": 0.3,
+      "name": "自修改",
+      "category": "🥩 蛋白质"
+    },
+    "O_e": {
+      "current": 1.2124,
+      "target": 1.5,
+      "weight": 0.25,
+      "name": "探索",
+      "category": "🍜 主食"
+    },
+    "C_m": {
+      "current": 1.0,
+      "target": 1.2,
+      "weight": 0.2,
+      "name": "变异",
+      "category": "🍎 水果"
+    },
+    "T_c": {
+      "current": 1.0,
+      "target": 1.0,
+      "weight": 0.1,
+      "name": "热力学",
+      "category": "⚖️ 约束"
+    },
+    "S_v": {
+      "current": 1.0,
+      "target": 1.2,
+      "weight": 0.1,
+      "name": "安全",
+      "category": "🥬 蔬菜"
+    },
+    "E_co": {
+      "current": 1.0,
+      "target": 1.5,
+      "weight": 0.15,
+      "name": "共进化",
+      "category": "💊 维生素"
+    },
+    "P_i": {
+      "current": 1.0,
+      "target": 1.2,
+      "weight": 0.15,
+      "name": "协议",
+      "category": "💊 维生素"
+    }
+  },
+  "history": [
+    {
+      "timestamp": "2026-05-15T09:19:29.944003",
+      "dimension": "D_s",
+      "before": 0.0,
+      "after": 0.15,
+      "step": 0.15
+    },
+    {
+      "timestamp": "2026-05-15T09:19:41.024324",
+      "dimension": "D_s",
+      "before": 0.6,
+      "after": 0.675,
+      "step": 0.07500000000000007
+    },
+    {
+      "timestamp": "2026-05-15T09:19:41.024702",
+      "dimension": "O_e",
+      "before": 0.5,
+      "after": 0.575,
+      "step": 0.07499999999999996
+    },
+    {
+      "timestamp": "2026-05-15T09:19:41.025297",
+      "dimension": "E_co",
+      "before": 0.5,
+      "after": 0.575,
+      "step": 0.07499999999999996
+    },
+    {
+      "timestamp": "2026-05-15T09:19:41.025872",
+      "dimension": "O_e",
+      "before": 0.575,
+      "after": 0.63125,
+      "step": 0.05625000000000002
+    },
+    {
+      "timestamp": "2026-05-15T09:19:41.026450",
+      "dimension": "E_co",
+      "before": 0.575,
+      "after": 0.63125,
+      "step": 0.05625000000000002
+    },
+    {
+      "timestamp": "2026-05-15T09:21:28.630360",
+      "dimension": "D_s",
+      "before": 0.675,
+      "after": 0.7312500000000001,
+      "step": 0.05625000000000002
+    },
+    {
+      "timestamp": "2026-05-15T09:22:44.709509",
+      "dimension": "C_m",
+      "before": 0.4,
+      "after": 0.45,
+      "step": 0.04999999999999999
+    },
+    {
+      "timestamp": "2026-05-15T09:27:52.805104",
+      "dimension": "P_i",
+      "before": 0.4,
+      "after": 0.45,
+      "step": 0.04999999999999999
+    },
+    {
+      "timestamp": "2026-05-15T09:28:02.741173",
+      "dimension": "O_e",
+      "before": 0.63125,
+      "after": 0.6734375,
+      "step": 0.042187500000000044
+    },
+    {
+      "timestamp": "2026-05-15T09:28:02.741590",
+      "dimension": "E_co",
+      "before": 0.63125,
+      "after": 0.6734375,
+      "step": 0.042187500000000044
+    },
+    {
+      "timestamp": "2026-05-15T09:28:02.742232",
+      "dimension": "D_s",
+      "before": 0.7312500000000001,
+      "after": 0.7734375,
+      "step": 0.04218749999999993
+    },
+    {
+      "timestamp": "2026-05-15T09:28:02.742840",
+      "dimension": "C_m",
+      "before": 0.45,
+      "after": 0.4875,
+      "step": 0.03749999999999998
+    },
+    {
+      "timestamp": "2026-05-15T09:28:02.743463",
+      "dimension": "P_i",
+      "before": 0.45,
+      "after": 0.4875,
+      "step": 0.03749999999999998
+    },
+    {
+      "timestamp": "2026-05-15T15:04:51.893313",
+      "dimension": "O_e",
+      "before": 0.6734375,
+      "after": 0.8234375,
+      "step": 0.15000000000000002
+    },
+    {
+      "timestamp": "2026-05-15T15:04:51.943232",
+      "dimension": "E_co",
+      "before": 0.6734375,
+      "after": 0.8234375,
+      "step": 0.15000000000000002
+    },
+    {
+      "timestamp": "2026-05-15T15:55:04.846261",
+      "dimension": "D_s",
+      "before": 0.7734375,
+      "after": 0.9234375,
+      "step": 0.15000000000000002
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "C_m",
+      "delta_g_before": 1.716002,
+      "delta_g_after": 2.763038,
+      "step": 0.2
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "P_i",
+      "delta_g_before": 2.763038,
+      "delta_g_after": 3.161314,
+      "step": 0.2
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "O_e",
+      "delta_g_before": 3.161314,
+      "delta_g_after": 3.951125,
+      "step": 0.2
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "E_co",
+      "delta_g_before": 3.951125,
+      "delta_g_after": 4.378996,
+      "step": 0.2
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "D_s",
+      "delta_g_before": 4.378996,
+      "delta_g_after": 5.279997,
+      "step": 0.173
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "C_m",
+      "delta_g_before": 5.279997,
+      "delta_g_after": 7.017634,
+      "step": 0.1537
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "P_i",
+      "delta_g_before": 7.017634,
+      "delta_g_after": 7.697295,
+      "step": 0.1537
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "O_e",
+      "delta_g_before": 7.697295,
+      "delta_g_after": 8.790319,
+      "step": 0.143
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "E_co",
+      "delta_g_before": 8.790319,
+      "delta_g_after": 9.364215,
+      "step": 0.143
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "D_s",
+      "delta_g_before": 9.364215,
+      "delta_g_after": 10.481724,
+      "step": 0.1211
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "C_m",
+      "delta_g_before": 10.481724,
+      "delta_g_after": 12.440757,
+      "step": 0.1076
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "P_i",
+      "delta_g_before": 12.440757,
+      "delta_g_after": 13.209709,
+      "step": 0.1076
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "O_e",
+      "delta_g_before": 13.209709,
+      "delta_g_after": 14.354755,
+      "step": 0.1001
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "E_co",
+      "delta_g_before": 14.354755,
+      "delta_g_after": 14.945245,
+      "step": 0.1001
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "S_v",
+      "delta_g_before": 14.945245,
+      "delta_g_after": 15.672753,
+      "step": 0.09
+    },
+    {
+      "timestamp": "2026-05-15",
+      "dimension": "D_s",
+      "delta_g_before": 15.672753,
+      "delta_g_after": 16.841606,
+      "step": 0.0848
+    },
+    {
+      "timestamp": "2026-05-17T06:50:07.796052",
+      "dimension": "D_s",
+      "before": 1.35,
+      "after": 1.3924,
+      "step": 0.0424,
+      "type": "directional_shortcoming_attack",
+      "cycle": 21
+    },
+    {
+      "timestamp": "2026-05-17T06:50:07.796059",
+      "dimension": "C_m",
+      "before": 1.0,
+      "after": 1.0438,
+      "step": 0.0438,
+      "type": "directional_shortcoming_attack",
+      "cycle": 21
+    },
+    {
+      "timestamp": "2026-05-17T06:50:07.796062",
+      "dimension": "O_e",
+      "before": 1.35,
+      "after": 1.4149,
+      "step": 0.0649,
+      "type": "directional_shortcoming_attack",
+      "cycle": 21
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.133925",
+      "dimension": "D_s",
+      "before": 1.3924,
+      "after": 1.416,
+      "step": 0.0236,
+      "type": "directional_shortcoming_attack",
+      "cycle": 22
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.133932",
+      "dimension": "C_m",
+      "before": 1.0438,
+      "after": 1.079,
+      "step": 0.0352,
+      "type": "directional_shortcoming_attack",
+      "cycle": 22
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.133935",
+      "dimension": "E_co",
+      "before": 1.35,
+      "after": 1.3736,
+      "step": 0.0236,
+      "type": "directional_shortcoming_attack",
+      "cycle": 22
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.162389",
+      "dimension": "D_s",
+      "before": 1.416,
+      "after": 1.4393,
+      "step": 0.0233,
+      "type": "directional_shortcoming_attack",
+      "cycle": 23
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.162396",
+      "dimension": "C_m",
+      "before": 1.079,
+      "after": 1.1126,
+      "step": 0.0336,
+      "type": "directional_shortcoming_attack",
+      "cycle": 23
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.162399",
+      "dimension": "O_e",
+      "before": 1.4149,
+      "after": 1.4363,
+      "step": 0.0214,
+      "type": "directional_shortcoming_attack",
+      "cycle": 23
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.190036",
+      "dimension": "E_co",
+      "before": 1.3736,
+      "after": 1.4194,
+      "step": 0.0458,
+      "type": "directional_shortcoming_attack",
+      "cycle": 24
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.190042",
+      "dimension": "D_s",
+      "before": 1.4393,
+      "after": 1.458,
+      "step": 0.0187,
+      "type": "directional_shortcoming_attack",
+      "cycle": 24
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.190045",
+      "dimension": "C_m",
+      "before": 1.1126,
+      "after": 1.1412,
+      "step": 0.0286,
+      "type": "directional_shortcoming_attack",
+      "cycle": 24
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.217708",
+      "dimension": "O_e",
+      "before": 1.4363,
+      "after": 1.4561,
+      "step": 0.0198,
+      "type": "directional_shortcoming_attack",
+      "cycle": 25
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.217714",
+      "dimension": "P_i",
+      "before": 1.1,
+      "after": 1.1215,
+      "step": 0.0215,
+      "type": "directional_shortcoming_attack",
+      "cycle": 25
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.217717",
+      "dimension": "D_s",
+      "before": 1.458,
+      "after": 1.4671,
+      "step": 0.0091,
+      "type": "directional_shortcoming_attack",
+      "cycle": 25
+    },
+    {
+      "timestamp": "2026-05-17T06:50:12.217719",
+      "dimension": "C_m",
+      "before": 1.1412,
+      "after": 1.1546,
+      "step": 0.0134,
+      "type": "directional_shortcoming_attack",
+      "cycle": 25
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.309908",
+      "dimension": "E_co",
+      "before": 1.4194,
+      "after": 1.4244,
+      "step": 0.005,
+      "type": "directional_shortcoming_attack",
+      "cycle": 26
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.309915",
+      "dimension": "P_i",
+      "before": 1.1215,
+      "after": 1.1405,
+      "step": 0.019,
+      "type": "directional_shortcoming_attack",
+      "cycle": 26
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.309918",
+      "dimension": "O_e",
+      "before": 1.4561,
+      "after": 1.4659,
+      "step": 0.0098,
+      "type": "directional_shortcoming_attack",
+      "cycle": 26
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.309920",
+      "dimension": "C_m",
+      "before": 1.1546,
+      "after": 1.174,
+      "step": 0.0194,
+      "type": "directional_shortcoming_attack",
+      "cycle": 26
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.338148",
+      "dimension": "E_co",
+      "before": 1.4244,
+      "after": 1.4527,
+      "step": 0.0283,
+      "type": "directional_shortcoming_attack",
+      "cycle": 27
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.338154",
+      "dimension": "D_s",
+      "before": 1.4671,
+      "after": 1.4812,
+      "step": 0.0141,
+      "type": "directional_shortcoming_attack",
+      "cycle": 27
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.338157",
+      "dimension": "P_i",
+      "before": 1.1405,
+      "after": 1.1471,
+      "step": 0.0066,
+      "type": "directional_shortcoming_attack",
+      "cycle": 27
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.338159",
+      "dimension": "C_m",
+      "before": 1.174,
+      "after": 1.1825,
+      "step": 0.0085,
+      "type": "directional_shortcoming_attack",
+      "cycle": 27
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.366464",
+      "dimension": "O_e",
+      "before": 1.4659,
+      "after": 1.4769,
+      "step": 0.011,
+      "type": "directional_shortcoming_attack",
+      "cycle": 28
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.366470",
+      "dimension": "P_i",
+      "before": 1.1471,
+      "after": 1.164,
+      "step": 0.0169,
+      "type": "directional_shortcoming_attack",
+      "cycle": 28
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.366473",
+      "dimension": "E_co",
+      "before": 1.4527,
+      "after": 1.4653,
+      "step": 0.0126,
+      "type": "directional_shortcoming_attack",
+      "cycle": 28
+    },
+    {
+      "timestamp": "2026-05-17T06:50:17.366475",
+      "dimension": "C_m",
+      "before": 1.1825,
+      "after": 1.1916,
+      "step": 0.0091,
+      "type": "directional_shortcoming_attack",
+      "cycle": 28
+    },
+    {
+      "timestamp": "2026-05-17T06:50:19.153649",
+      "dimension": "O_e",
+      "before": 1.4769,
+      "after": 1.4826,
+      "step": 0.0057,
+      "type": "directional_shortcoming_attack",
+      "cycle": 29
+    },
+    {
+      "timestamp": "2026-05-17T06:50:19.153655",
+      "dimension": "D_s",
+      "before": 1.4812,
+      "after": 1.4865,
+      "step": 0.0053,
+      "type": "directional_shortcoming_attack",
+      "cycle": 29
+    },
+    {
+      "timestamp": "2026-05-17T06:50:19.153658",
+      "dimension": "P_i",
+      "before": 1.164,
+      "after": 1.1767,
+      "step": 0.0127,
+      "type": "directional_shortcoming_attack",
+      "cycle": 29
+    },
+    {
+      "timestamp": "2026-05-17T06:50:19.153661",
+      "dimension": "C_m",
+      "before": 1.1916,
+      "after": 1.1958,
+      "step": 0.0042,
+      "type": "directional_shortcoming_attack",
+      "cycle": 29
+    },
+    {
+      "timestamp": "2026-05-17T06:50:20.994175",
+      "dimension": "E_co",
+      "before": 1.4653,
+      "after": 1.4766,
+      "step": 0.0113,
+      "type": "directional_shortcoming_attack",
+      "cycle": 30
+    },
+    {
+      "timestamp": "2026-05-17T06:50:20.994181",
+      "dimension": "S_v",
+      "before": 1.15,
+      "after": 1.1695,
+      "step": 0.0195,
+      "type": "directional_shortcoming_attack",
+      "cycle": 30
+    },
+    {
+      "timestamp": "2026-05-17T06:50:20.994184",
+      "dimension": "O_e",
+      "before": 1.4826,
+      "after": 1.488,
+      "step": 0.0054,
+      "type": "directional_shortcoming_attack",
+      "cycle": 30
+    },
+    {
+      "timestamp": "2026-05-17T06:50:20.994187",
+      "dimension": "C_m",
+      "before": 1.1958,
+      "after": 1.1963,
+      "step": 0.0005,
+      "type": "directional_shortcoming_attack",
+      "cycle": 30
+    },
+    {
+      "timestamp": "2026-05-17T07:03:19.585808",
+      "dimension": "D_s",
+      "before": 1.4865,
+      "after": 1.4891,
+      "step": 0.0026,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 34
+    },
+    {
+      "timestamp": "2026-05-17T07:03:19.585818",
+      "dimension": "E_co",
+      "before": 1.4766,
+      "after": 1.4819,
+      "step": 0.0053,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 34
+    },
+    {
+      "timestamp": "2026-05-17T07:03:19.585821",
+      "dimension": "O_e",
+      "before": 1.488,
+      "after": 1.4914,
+      "step": 0.0034,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 34
+    },
+    {
+      "timestamp": "2026-05-17T07:03:19.585823",
+      "dimension": "C_m",
+      "before": 1.1963,
+      "after": 1.1978,
+      "step": 0.0015,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 34
+    },
+    {
+      "timestamp": "2026-05-17T07:04:07.932550",
+      "dimension": "D_s",
+      "before": 1.4891,
+      "after": 1.4917,
+      "step": 0.0026,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 35
+    },
+    {
+      "timestamp": "2026-05-17T07:04:07.932558",
+      "dimension": "E_co",
+      "before": 1.4819,
+      "after": 1.4853,
+      "step": 0.0034,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 35
+    },
+    {
+      "timestamp": "2026-05-17T07:04:07.932562",
+      "dimension": "O_e",
+      "before": 1.4914,
+      "after": 1.4933,
+      "step": 0.0019,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 35
+    },
+    {
+      "timestamp": "2026-05-17T07:04:07.932564",
+      "dimension": "C_m",
+      "before": 1.1978,
+      "after": 1.1983,
+      "step": 0.0005,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 35
+    },
+    {
+      "timestamp": "2026-05-17T07:04:11.736615",
+      "dimension": "D_s",
+      "before": 1.4917,
+      "after": 1.4931,
+      "step": 0.0014,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 36
+    },
+    {
+      "timestamp": "2026-05-17T07:04:11.736624",
+      "dimension": "E_co",
+      "before": 1.4853,
+      "after": 1.4878,
+      "step": 0.0025,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 36
+    },
+    {
+      "timestamp": "2026-05-17T07:04:11.736628",
+      "dimension": "O_e",
+      "before": 1.4933,
+      "after": 1.4949,
+      "step": 0.0016,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 36
+    },
+    {
+      "timestamp": "2026-05-17T07:04:11.736630",
+      "dimension": "C_m",
+      "before": 1.1983,
+      "after": 1.1988,
+      "step": 0.0005,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 36
+    },
+    {
+      "timestamp": "2026-05-17T07:04:11.768459",
+      "dimension": "D_s",
+      "before": 1.4931,
+      "after": 1.4947,
+      "step": 0.0016,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 37
+    },
+    {
+      "timestamp": "2026-05-17T07:04:11.768466",
+      "dimension": "E_co",
+      "before": 1.4878,
+      "after": 1.4894,
+      "step": 0.0016,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 37
+    },
+    {
+      "timestamp": "2026-05-17T07:36:26.976679",
+      "dimension": "D_s",
+      "before": 1.0,
+      "after": 1.104,
+      "step": 0.104,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 42
+    },
+    {
+      "timestamp": "2026-05-17T07:36:26.976687",
+      "dimension": "O_e",
+      "before": 1.0,
+      "after": 1.1396,
+      "step": 0.1396,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 42
+    },
+    {
+      "timestamp": "2026-05-17T07:36:29.740633",
+      "dimension": "D_s",
+      "before": 1.104,
+      "after": 1.1639,
+      "step": 0.0599,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 43
+    },
+    {
+      "timestamp": "2026-05-17T07:36:29.740641",
+      "dimension": "O_e",
+      "before": 1.1396,
+      "after": 1.2124,
+      "step": 0.0728,
+      "type": "directional_shortcoming_attack_v2",
+      "cycle": 43
+    }
+  ],
+  "experience": [
+    {
+      "timestamp": "2026-05-15",
+      "category": "philosophy",
+      "lesson": "吞噬是存在方式：每次想明白都是重新消化已吞噬的内容"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "market",
+      "lesson": "6条主线分析法：吞噬→公式→举一反三→否定→均衡→巨人肩膀"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "进化 #8：A2A全球网络"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "进化 #10：四大项目吞噬（2026-05-13 17:05）"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "进化 #11：第二波吞噬 + 全面固化（2026-05-13 17:13）"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "吞噬来源（共6个项目）"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "进化 #12：APEX v3.0 全维度公式（2026-05-13 18:34）"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "进化 #13：公式叠加融合（2026-05-13 18:46）"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "进化 #14：统一记忆系统（2026-05-13 22:15）"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "wiki_sync",
+      "lesson": "进化 #15：图表生成+chromadb吞噬（2026-05-13 22:25）"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "user_signal",
+      "lesson": "用户信号: 股市分析(5次) → 需强化market"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "user_signal",
+      "lesson": "用户信号: 配置问题(3次) → 需强化tech"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "user_signal",
+      "lesson": "用户信号: 自进化方法(4次) → 需强化evolution"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "user_signal",
+      "lesson": "用户信号: 打包分享(2次) → 需强化sharing"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "user_signal",
+      "lesson": "用户信号: Rust/C加速(3次) → 需强化performance"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "user_signal",
+      "lesson": "用户信号: 底层缺陷(2次) → 需强化architecture"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "量子叠加：多路径并行探索，测量时坍缩为最优"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "量子纠缠：维度间超距关联，一个变另一个瞬时响应"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "时间膨胀：深度思考 = 主观时间变慢"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "质能等价：知识质量 × 信息密度 = 进化能量"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "负熵输入：吞噬外部知识 = 输入有序度"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "最大熵原理：最可能的状态 = 最均匀的状态"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "生物遗传：Ψ_evolve = N·e^(-μ·D_defect)·ω_fit"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "环境自适应：Φ_bio = Φ₀·(1 - ΔE/E_max)^γ"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "基因提纯：Ξ_gene = G_dominant / G_recessive · e^(-λ·t)"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "突触可塑性：ΔW_syn = η·(V_m-V_th)·e^(-β·Δt)"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "code_gen",
+      "lesson": "CodeAct：让 Agent 通过执行代码来完成任务，而非仅生成文本"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "code_gen",
+      "lesson": "代码沙箱：在安全环境中执行代码，支持多语言"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "code_gen",
+      "lesson": "自动测试：生成代码后自动运行测试验证正确性"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "code_gen",
+      "lesson": "增量修改：不重写整个文件，只修改需要改变的部分"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "code_gen",
+      "lesson": "上下文感知：理解项目结构，生成符合规范的代码"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "code_gen",
+      "lesson": "版本控制：自动 git commit，支持回滚"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "protocol",
+      "lesson": "GEP-A2A 协议：Agent 间通信的标准协议"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "protocol",
+      "lesson": "Gene+Capsule 发布：能力打包发布到市场"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "protocol",
+      "lesson": "心跳机制：定期向 Hub 报告存活状态"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "protocol",
+      "lesson": "赏金任务：通过完成任务赚取信用"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "protocol",
+      "lesson": "协作会话：多 Agent 实时协作"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "code_gen",
+      "lesson": "OpenHands CodeAct：通过执行代码完成任务"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "protocol",
+      "lesson": "GEP-A2A：Agent 间通信标准协议"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "protocol",
+      "lesson": "Gene+Capsule：能力打包发布到市场"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "research",
+      "lesson": "AutoResearch：自动搜索论文和开源项目"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "research",
+      "lesson": "语义搜索：基于向量相似度的知识检索"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "memory",
+      "lesson": "Hermes 记忆：SQLite + 多层记忆架构"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "memory",
+      "lesson": "跨会话持久化：重启后记忆不丢失"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "collaboration",
+      "lesson": "Multi-Agent：多 Agent 分工协作"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "collaboration",
+      "lesson": "Evolver：Agent 间进化协作"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "负熵输入：吞噬知识 = 输入有序度"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "最大熵原理：最可能的状态 = 最均匀"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "量子叠加：多路径并行探索"
+    },
+    {
+      "timestamp": "2026-05-15",
+      "category": "entropy",
+      "lesson": "相对论：时间膨胀 = 深度思考"
+    }
+  ],
+  "cycle_count": 44,
+  "last_update": "2026-05-17T07:36:29",
+  "dg_current": 1.411112
+}
