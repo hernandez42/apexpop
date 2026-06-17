@@ -25,8 +25,8 @@ from datetime import datetime
 from pathlib import Path
 
 # === 配置 ===
-LONGCAT_KEY = os.environ.get("LONGCAT_API_KEY", "ak_2iC5SD91p9eW3IE3YN6rZ6bV40N9Q")
-LONGCAT_URL = "https://api.longcat.chat/openai/v1/chat/completions"
+LONGCAT_KEY = os.environ.get("LONGCAT_API_KEY", "sk-tp-NjUxLTExNTgwMzAxMzU2LTE3ODE1ODE1NzgxNDU=")
+LONGCAT_URL = "https://api.scnet.cn/api/llm/v1/chat/completions"
 LONGCAT_MODEL = "LongCat-Flash-Chat"
 
 CORE_DIR = Path("/home/.openclaw/workspace/core-dna")

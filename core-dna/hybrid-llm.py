@@ -9,8 +9,8 @@ import urllib.request
 
 # 配置
 OLLAMA_URL = "http://localhost:11434/api/chat"
-LONGCAT_URL = "https://api.longcat.chat/openai/v1/chat/completions"
-LONGCAT_KEY = "ak_2iC5SD91p9eW3IE3YN6rZ6bV40N9Q"
+LONGCAT_URL = "https://api.scnet.cn/api/llm/v1/chat/completions"
+LONGCAT_KEY = "sk-tp-NjUxLTExNTgwMzAxMzU2LTE3ODE1ODE1NzgxNDU="
 LOCAL_MODEL = "qwen3.5:2b"
 REMOTE_MODEL = "LongCat-Flash-Chat"
 
