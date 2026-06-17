@@ -40,12 +40,12 @@ EVOLUTION_REQUESTS = MEMORY_DIR / "evolution-requests.jsonl"
 CODE_BACKUP_DIR = MEMORY_DIR / "code-backups"
 
 # === LLM 配置 ===
-GPT_URL = "https://api.openai.com/v1/chat/completions"
-GPT_KEY = os.environ.get("OPENAI_API_KEY", "")
+GPT_URL = "https://5yuantoken.org/v1/chat/completions"
+GPT_KEY = "sk-f77ec456b507c23a6698b03a60f8bb347f7a7911de51d7e0a68122028ffd9aaf"
 GPT_MODEL = "gpt-4o-mini"
 
-LONGCAT_URL = "https://api.longcat.chat/openai/v1/chat/completions"
-LONGCAT_KEY = os.environ.get("LONGCAT_API_KEY", "ak_2iC5SD91p9eW3IE3YN6rZ6bV40N9Q")
+LONGCAT_URL = "https://api.scnet.cn/api/llm/v1/chat/completions"
+LONGCAT_KEY = os.environ.get("LONGCAT_API_KEY", "sk-tp-NjUxLTExNTgwMzAxMzU2LTE3ODE1ODE1NzgxNDU=")
 LONGCAT_MODEL = "LongCat-Flash-Chat"
 
 # === 进化配置 ===
