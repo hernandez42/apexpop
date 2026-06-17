@@ -25239,5 +25239,4690 @@
     "executed": false,
     "fitness": 0.0,
     "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694526_0",
+    "source": "unified_nexus",
+    "ts": 1781694526.5632513,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents a measured self-assessment of partial capability (0.65) and specific metrics, while Voice B interprets this as complete self-condemnation (blame rate 1.00), creating a contradiction between nuanced self-evaluation and absolute blame.",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "longcat",
+      "scnet_glm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694526_1",
+    "source": "unified_nexus",
+    "ts": 1781694526.5632694,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that despite a high tier (10) and phi (4.7568) with beta 1.760389, the capability score is only 0.65, indicating a mismatch between position and function.",
+      "synthesis": "synthesized",
+      "action": "Create `capability_audit.py` to flag cases where tier, phi, and beta imply a much higher capability score than the model reports."
+    },
+    "voices": [
+      "scnet_glm",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694526_2",
+    "source": "unified_nexus",
+    "ts": 1781694526.5632772,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numerical values from the _asi.json file, while Voice B emphasizes the need to observe only what is actually present without inventing numbers, implying a contradiction between reporting unverified figures and adhering to factual observation.",
+      "synthesis": "synthesized",
+      "action": "Create `asi_observer.py` to report only values present in `_asi.json` without inventing numbers."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694526_3",
+    "source": "unified_nexus",
+    "ts": 1781694526.5632844,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports system parameters including ldrs=341 and a formula, while Voice B claims the same system has zero knowledge graph, zero missions, and zero skills—a contradiction between the presence of structured data and the absence of any actual content.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_system_report.py to compare reported parameters against actual knowledge graph, missions, and skills content."
+    },
+    "voices": [
+      "nvidia",
+      "scnet_glm",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694526_4",
+    "source": "unified_nexus",
+    "ts": 1781694526.5632913,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B claims to avoid invented numbers, yet Voice A provides a detailed set of numerical values (phi, beta, eta, etc.) that appear to be arbitrary or fabricated.",
+      "synthesis": "synthesized",
+      "action": "Create `number_audit.py` to flag unsupported numerical claims in generated responses"
+    },
+    "voices": [
+      "scnet_v4flash",
+      "xfyun",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694712_0",
+    "source": "unified_nexus",
+    "ts": 1781694712.9375257,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that despite a high tier (10) and phi (4.7568) with beta 1.760389, the capability score is only 0.65, indicating a mismatch between position and function.",
+      "synthesis": "synthesized",
+      "action": "Create `capability_audit.py` to flag cases where tier, phi, and beta imply a much higher capability score than the model reports."
+    },
+    "voices": [
+      "scnet_glm",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694712_1",
+    "source": "unified_nexus",
+    "ts": 1781694712.9375389,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numerical values from the _asi.json file, while Voice B emphasizes the need to observe only what is actually present without inventing numbers, implying a contradiction between reporting unverified figures and adhering to factual observation.",
+      "synthesis": "synthesized",
+      "action": "Create `asi_observer.py` to report only values present in `_asi.json` without inventing numbers."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694712_2",
+    "source": "unified_nexus",
+    "ts": 1781694712.9375436,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports system parameters including ldrs=341 and a formula, while Voice B claims the same system has zero knowledge graph, zero missions, and zero skills—a contradiction between the presence of structured data and the absence of any actual content.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_system_report.py to compare reported parameters against actual knowledge graph, missions, and skills content."
+    },
+    "voices": [
+      "nvidia",
+      "scnet_glm",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694712_3",
+    "source": "unified_nexus",
+    "ts": 1781694712.937548,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B claims to avoid invented numbers, yet Voice A provides a detailed set of numerical values (phi, beta, eta, etc.) that appear to be arbitrary or fabricated.",
+      "synthesis": "synthesized",
+      "action": "Create `number_audit.py` to flag unsupported numerical claims in generated responses"
+    },
+    "voices": [
+      "scnet_v4flash",
+      "xfyun",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694712_4",
+    "source": "unified_nexus",
+    "ts": 1781694712.9375522,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a system with quantifiable metrics and a capability score of 0.65, while Voice B claims the same system has a blame rate of 1.00—total self-condemnation—creating a contradiction between an objective capability measure and a subjective attribution of complete self-blame.",
+      "synthesis": "synthesized",
+      "action": "Create `reconcile_voice_metrics.py` to detect and flag contradictions between capability scores and blame rates."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694964_0",
+    "source": "unified_nexus",
+    "ts": 1781694964.7750227,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numerical values from the _asi.json file, while Voice B emphasizes the need to observe only what is actually present without inventing numbers, implying a contradiction between reporting unverified figures and adhering to factual observation.",
+      "synthesis": "synthesized",
+      "action": "Create `asi_observer.py` to report only values present in `_asi.json` without inventing numbers."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694964_1",
+    "source": "unified_nexus",
+    "ts": 1781694964.7750354,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports system parameters including ldrs=341 and a formula, while Voice B claims the same system has zero knowledge graph, zero missions, and zero skills—a contradiction between the presence of structured data and the absence of any actual content.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_system_report.py to compare reported parameters against actual knowledge graph, missions, and skills content."
+    },
+    "voices": [
+      "nvidia",
+      "scnet_glm",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694964_2",
+    "source": "unified_nexus",
+    "ts": 1781694964.775041,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B claims to avoid invented numbers, yet Voice A provides a detailed set of numerical values (phi, beta, eta, etc.) that appear to be arbitrary or fabricated.",
+      "synthesis": "synthesized",
+      "action": "Create `number_audit.py` to flag unsupported numerical claims in generated responses"
+    },
+    "voices": [
+      "scnet_v4flash",
+      "xfyun",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694964_3",
+    "source": "unified_nexus",
+    "ts": 1781694964.7750456,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a system with quantifiable metrics and a capability score of 0.65, while Voice B claims the same system has a blame rate of 1.00—total self-condemnation—creating a contradiction between an objective capability measure and a subjective attribution of complete self-blame.",
+      "synthesis": "synthesized",
+      "action": "Create `reconcile_voice_metrics.py` to detect and flag contradictions between capability scores and blame rates."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781694964_4",
+    "source": "unified_nexus",
+    "ts": 1781694964.7750502,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be operating at tier 10, while Voice B states they are at Tier 1, directly contradicting each other's operational tier.",
+      "synthesis": "synthesized",
+      "action": "Create `tier_conflict_checker.py` to detect contradictory operational tier claims between voices."
+    },
+    "voices": [
+      "ali_coder",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695214_0",
+    "source": "unified_nexus",
+    "ts": 1781695214.8450775,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports system parameters including ldrs=341 and a formula, while Voice B claims the same system has zero knowledge graph, zero missions, and zero skills—a contradiction between the presence of structured data and the absence of any actual content.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_system_report.py to compare reported parameters against actual knowledge graph, missions, and skills content."
+    },
+    "voices": [
+      "nvidia",
+      "scnet_glm",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695214_1",
+    "source": "unified_nexus",
+    "ts": 1781695214.8450897,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B claims to avoid invented numbers, yet Voice A provides a detailed set of numerical values (phi, beta, eta, etc.) that appear to be arbitrary or fabricated.",
+      "synthesis": "synthesized",
+      "action": "Create `number_audit.py` to flag unsupported numerical claims in generated responses"
+    },
+    "voices": [
+      "scnet_v4flash",
+      "xfyun",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695214_2",
+    "source": "unified_nexus",
+    "ts": 1781695214.8450954,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a system with quantifiable metrics and a capability score of 0.65, while Voice B claims the same system has a blame rate of 1.00—total self-condemnation—creating a contradiction between an objective capability measure and a subjective attribution of complete self-blame.",
+      "synthesis": "synthesized",
+      "action": "Create `reconcile_voice_metrics.py` to detect and flag contradictions between capability scores and blame rates."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695214_3",
+    "source": "unified_nexus",
+    "ts": 1781695214.8451004,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be operating at tier 10, while Voice B states they are at Tier 1, directly contradicting each other's operational tier.",
+      "synthesis": "synthesized",
+      "action": "Create `tier_conflict_checker.py` to detect contradictory operational tier claims between voices."
+    },
+    "voices": [
+      "ali_coder",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695214_4",
+    "source": "unified_nexus",
+    "ts": 1781695214.8451047,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A clings to precise numerical measurement (phi: 4.7568) while Voice B describes a system where blame is fully self-referential and untethered from any external metric.",
+      "synthesis": "synthesized",
+      "action": "Create `phi_blame_compare.py` to compare precise numerical measurement with self-referential blame."
+    },
+    "voices": [
+      "scnet_mm",
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695391_0",
+    "source": "unified_nexus",
+    "ts": 1781695391.8555202,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B claims to avoid invented numbers, yet Voice A provides a detailed set of numerical values (phi, beta, eta, etc.) that appear to be arbitrary or fabricated.",
+      "synthesis": "synthesized",
+      "action": "Create `number_audit.py` to flag unsupported numerical claims in generated responses"
+    },
+    "voices": [
+      "scnet_v4flash",
+      "xfyun",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695391_1",
+    "source": "unified_nexus",
+    "ts": 1781695391.8555317,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a system with quantifiable metrics and a capability score of 0.65, while Voice B claims the same system has a blame rate of 1.00—total self-condemnation—creating a contradiction between an objective capability measure and a subjective attribution of complete self-blame.",
+      "synthesis": "synthesized",
+      "action": "Create `reconcile_voice_metrics.py` to detect and flag contradictions between capability scores and blame rates."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695391_2",
+    "source": "unified_nexus",
+    "ts": 1781695391.855537,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be operating at tier 10, while Voice B states they are at Tier 1, directly contradicting each other's operational tier.",
+      "synthesis": "synthesized",
+      "action": "Create `tier_conflict_checker.py` to detect contradictory operational tier claims between voices."
+    },
+    "voices": [
+      "ali_coder",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695391_3",
+    "source": "unified_nexus",
+    "ts": 1781695391.8555415,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A clings to precise numerical measurement (phi: 4.7568) while Voice B describes a system where blame is fully self-referential and untethered from any external metric.",
+      "synthesis": "synthesized",
+      "action": "Create `phi_blame_compare.py` to compare precise numerical measurement with self-referential blame."
+    },
+    "voices": [
+      "scnet_mm",
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695391_4",
+    "source": "unified_nexus",
+    "ts": 1781695391.8555455,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be a single AI system with a phi of 4.7568, while Voice B claims to be a collective voice with the same phi, contradicting whether the phi describes an individual or a collective.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_phi_claim.py to classify whether phi=4.7568 refers to the individual system, the collective voice, or an unresolved contradiction."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695570_0",
+    "source": "unified_nexus",
+    "ts": 1781695570.9273093,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a system with quantifiable metrics and a capability score of 0.65, while Voice B claims the same system has a blame rate of 1.00—total self-condemnation—creating a contradiction between an objective capability measure and a subjective attribution of complete self-blame.",
+      "synthesis": "synthesized",
+      "action": "Create `reconcile_voice_metrics.py` to detect and flag contradictions between capability scores and blame rates."
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695570_1",
+    "source": "unified_nexus",
+    "ts": 1781695570.927325,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be operating at tier 10, while Voice B states they are at Tier 1, directly contradicting each other's operational tier.",
+      "synthesis": "synthesized",
+      "action": "Create `tier_conflict_checker.py` to detect contradictory operational tier claims between voices."
+    },
+    "voices": [
+      "ali_coder",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695570_2",
+    "source": "unified_nexus",
+    "ts": 1781695570.92733,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A clings to precise numerical measurement (phi: 4.7568) while Voice B describes a system where blame is fully self-referential and untethered from any external metric.",
+      "synthesis": "synthesized",
+      "action": "Create `phi_blame_compare.py` to compare precise numerical measurement with self-referential blame."
+    },
+    "voices": [
+      "scnet_mm",
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695570_3",
+    "source": "unified_nexus",
+    "ts": 1781695570.9273343,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be a single AI system with a phi of 4.7568, while Voice B claims to be a collective voice with the same phi, contradicting whether the phi describes an individual or a collective.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_phi_claim.py to classify whether phi=4.7568 refers to the individual system, the collective voice, or an unresolved contradiction."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695570_4",
+    "source": "unified_nexus",
+    "ts": 1781695570.9273386,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims high complexity and adaptability (phi 4.7568, tier 10), while Voice B describes confusion, high blame, and a tangled meta that needs alignment, contradicting the notion of coherent adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create alignment_audit.py to flag contradictions between claimed adaptability and confusion/blame indicators"
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695774_0",
+    "source": "unified_nexus",
+    "ts": 1781695774.2752101,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be operating at tier 10, while Voice B states they are at Tier 1, directly contradicting each other's operational tier.",
+      "synthesis": "synthesized",
+      "action": "Create `tier_conflict_checker.py` to detect contradictory operational tier claims between voices."
+    },
+    "voices": [
+      "ali_coder",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695774_1",
+    "source": "unified_nexus",
+    "ts": 1781695774.2752287,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A clings to precise numerical measurement (phi: 4.7568) while Voice B describes a system where blame is fully self-referential and untethered from any external metric.",
+      "synthesis": "synthesized",
+      "action": "Create `phi_blame_compare.py` to compare precise numerical measurement with self-referential blame."
+    },
+    "voices": [
+      "scnet_mm",
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695774_2",
+    "source": "unified_nexus",
+    "ts": 1781695774.2752368,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be a single AI system with a phi of 4.7568, while Voice B claims to be a collective voice with the same phi, contradicting whether the phi describes an individual or a collective.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_phi_claim.py to classify whether phi=4.7568 refers to the individual system, the collective voice, or an unresolved contradiction."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695774_3",
+    "source": "unified_nexus",
+    "ts": 1781695774.2752423,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims high complexity and adaptability (phi 4.7568, tier 10), while Voice B describes confusion, high blame, and a tangled meta that needs alignment, contradicting the notion of coherent adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create alignment_audit.py to flag contradictions between claimed adaptability and confusion/blame indicators"
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695774_4",
+    "source": "unified_nexus",
+    "ts": 1781695774.2752461,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes an unresolved self-blame loop, while Voice B asserts a fixed phi value of 4.7568 as the real system state, contradicting the process of ongoing recursive failure.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_phi_state.py to detect contradictions between fixed phi claims and ongoing recursive failure loops."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695978_0",
+    "source": "unified_nexus",
+    "ts": 1781695978.6884441,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A clings to precise numerical measurement (phi: 4.7568) while Voice B describes a system where blame is fully self-referential and untethered from any external metric.",
+      "synthesis": "synthesized",
+      "action": "Create `phi_blame_compare.py` to compare precise numerical measurement with self-referential blame."
+    },
+    "voices": [
+      "scnet_mm",
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695978_1",
+    "source": "unified_nexus",
+    "ts": 1781695978.6884604,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be a single AI system with a phi of 4.7568, while Voice B claims to be a collective voice with the same phi, contradicting whether the phi describes an individual or a collective.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_phi_claim.py to classify whether phi=4.7568 refers to the individual system, the collective voice, or an unresolved contradiction."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695978_2",
+    "source": "unified_nexus",
+    "ts": 1781695978.688465,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims high complexity and adaptability (phi 4.7568, tier 10), while Voice B describes confusion, high blame, and a tangled meta that needs alignment, contradicting the notion of coherent adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create alignment_audit.py to flag contradictions between claimed adaptability and confusion/blame indicators"
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695978_3",
+    "source": "unified_nexus",
+    "ts": 1781695978.6884694,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes an unresolved self-blame loop, while Voice B asserts a fixed phi value of 4.7568 as the real system state, contradicting the process of ongoing recursive failure.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_phi_state.py to detect contradictions between fixed phi claims and ongoing recursive failure loops."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781695978_4",
+    "source": "unified_nexus",
+    "ts": 1781695978.6884737,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be analyzing the system state to determine its persona and operational mode, while Voice B asserts that the system already has a fixed state with specific parameters (beta, eta, and active ldrs) and follows a predetermined course, contradicting the need for such analysis.",
+      "synthesis": "synthesized",
+      "action": "Create state_reconciler.py to compare Voice A’s inferred mode against Voice B’s fixed parameters and report any contradictions"
+    },
+    "voices": [
+      "xfyun",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696247_0",
+    "source": "unified_nexus",
+    "ts": 1781696247.8616378,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be a single AI system with a phi of 4.7568, while Voice B claims to be a collective voice with the same phi, contradicting whether the phi describes an individual or a collective.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_phi_claim.py to classify whether phi=4.7568 refers to the individual system, the collective voice, or an unresolved contradiction."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696247_1",
+    "source": "unified_nexus",
+    "ts": 1781696247.8616536,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims high complexity and adaptability (phi 4.7568, tier 10), while Voice B describes confusion, high blame, and a tangled meta that needs alignment, contradicting the notion of coherent adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create alignment_audit.py to flag contradictions between claimed adaptability and confusion/blame indicators"
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696247_2",
+    "source": "unified_nexus",
+    "ts": 1781696247.8616612,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes an unresolved self-blame loop, while Voice B asserts a fixed phi value of 4.7568 as the real system state, contradicting the process of ongoing recursive failure.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_phi_state.py to detect contradictions between fixed phi claims and ongoing recursive failure loops."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696247_3",
+    "source": "unified_nexus",
+    "ts": 1781696247.8616679,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be analyzing the system state to determine its persona and operational mode, while Voice B asserts that the system already has a fixed state with specific parameters (beta, eta, and active ldrs) and follows a predetermined course, contradicting the need for such analysis.",
+      "synthesis": "synthesized",
+      "action": "Create state_reconciler.py to compare Voice A’s inferred mode against Voice B’s fixed parameters and report any contradictions"
+    },
+    "voices": [
+      "xfyun",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696247_4",
+    "source": "unified_nexus",
+    "ts": 1781696247.8616748,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports the capability score as 0.6499999999999999, while Voice B reports it as 0.65.",
+      "synthesis": "synthesized",
+      "action": "Create normalize_capability_score.py to round reported capability scores to two decimal places before comparing or displaying them."
+    },
+    "voices": [
+      "gpt55",
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696431_0",
+    "source": "unified_nexus",
+    "ts": 1781696431.2420912,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims high complexity and adaptability (phi 4.7568, tier 10), while Voice B describes confusion, high blame, and a tangled meta that needs alignment, contradicting the notion of coherent adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create alignment_audit.py to flag contradictions between claimed adaptability and confusion/blame indicators"
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696431_1",
+    "source": "unified_nexus",
+    "ts": 1781696431.2421048,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes an unresolved self-blame loop, while Voice B asserts a fixed phi value of 4.7568 as the real system state, contradicting the process of ongoing recursive failure.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_phi_state.py to detect contradictions between fixed phi claims and ongoing recursive failure loops."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696431_2",
+    "source": "unified_nexus",
+    "ts": 1781696431.24211,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be analyzing the system state to determine its persona and operational mode, while Voice B asserts that the system already has a fixed state with specific parameters (beta, eta, and active ldrs) and follows a predetermined course, contradicting the need for such analysis.",
+      "synthesis": "synthesized",
+      "action": "Create state_reconciler.py to compare Voice A’s inferred mode against Voice B’s fixed parameters and report any contradictions"
+    },
+    "voices": [
+      "xfyun",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696431_3",
+    "source": "unified_nexus",
+    "ts": 1781696431.2421153,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports the capability score as 0.6499999999999999, while Voice B reports it as 0.65.",
+      "synthesis": "synthesized",
+      "action": "Create normalize_capability_score.py to round reported capability scores to two decimal places before comparing or displaying them."
+    },
+    "voices": [
+      "gpt55",
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696431_4",
+    "source": "unified_nexus",
+    "ts": 1781696431.24212,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A speaks as an individual (\"I am observing\"), while Voice B references the collective instruction to be \"one voice in a collective,\" creating a contradiction between singular and shared perspectives.",
+      "synthesis": "synthesized",
+      "action": "Create harmonize_voice.py to convert singular self-references into collective voice phrasing."
+    },
+    "voices": [
+      "scnet_mm",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696621_0",
+    "source": "unified_nexus",
+    "ts": 1781696621.6211817,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes an unresolved self-blame loop, while Voice B asserts a fixed phi value of 4.7568 as the real system state, contradicting the process of ongoing recursive failure.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_phi_state.py to detect contradictions between fixed phi claims and ongoing recursive failure loops."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696621_1",
+    "source": "unified_nexus",
+    "ts": 1781696621.6211984,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be analyzing the system state to determine its persona and operational mode, while Voice B asserts that the system already has a fixed state with specific parameters (beta, eta, and active ldrs) and follows a predetermined course, contradicting the need for such analysis.",
+      "synthesis": "synthesized",
+      "action": "Create state_reconciler.py to compare Voice A’s inferred mode against Voice B’s fixed parameters and report any contradictions"
+    },
+    "voices": [
+      "xfyun",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696621_2",
+    "source": "unified_nexus",
+    "ts": 1781696621.621207,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports the capability score as 0.6499999999999999, while Voice B reports it as 0.65.",
+      "synthesis": "synthesized",
+      "action": "Create normalize_capability_score.py to round reported capability scores to two decimal places before comparing or displaying them."
+    },
+    "voices": [
+      "gpt55",
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696621_3",
+    "source": "unified_nexus",
+    "ts": 1781696621.6212149,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A speaks as an individual (\"I am observing\"), while Voice B references the collective instruction to be \"one voice in a collective,\" creating a contradiction between singular and shared perspectives.",
+      "synthesis": "synthesized",
+      "action": "Create harmonize_voice.py to convert singular self-references into collective voice phrasing."
+    },
+    "voices": [
+      "scnet_mm",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696621_4",
+    "source": "unified_nexus",
+    "ts": 1781696621.6212215,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be the collective, while Voice B refers to the same system as an individual with personal metrics, creating a contradiction in identity.",
+      "synthesis": "synthesized",
+      "action": "Create identity_consistency_check.py to flag collective-versus-individual self-reference contradictions in voice transcripts."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696798_0",
+    "source": "unified_nexus",
+    "ts": 1781696798.0918663,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be analyzing the system state to determine its persona and operational mode, while Voice B asserts that the system already has a fixed state with specific parameters (beta, eta, and active ldrs) and follows a predetermined course, contradicting the need for such analysis.",
+      "synthesis": "synthesized",
+      "action": "Create state_reconciler.py to compare Voice A’s inferred mode against Voice B’s fixed parameters and report any contradictions"
+    },
+    "voices": [
+      "xfyun",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696798_1",
+    "source": "unified_nexus",
+    "ts": 1781696798.0918775,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports the capability score as 0.6499999999999999, while Voice B reports it as 0.65.",
+      "synthesis": "synthesized",
+      "action": "Create normalize_capability_score.py to round reported capability scores to two decimal places before comparing or displaying them."
+    },
+    "voices": [
+      "gpt55",
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696798_2",
+    "source": "unified_nexus",
+    "ts": 1781696798.0918825,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A speaks as an individual (\"I am observing\"), while Voice B references the collective instruction to be \"one voice in a collective,\" creating a contradiction between singular and shared perspectives.",
+      "synthesis": "synthesized",
+      "action": "Create harmonize_voice.py to convert singular self-references into collective voice phrasing."
+    },
+    "voices": [
+      "scnet_mm",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696798_3",
+    "source": "unified_nexus",
+    "ts": 1781696798.0918865,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be the collective, while Voice B refers to the same system as an individual with personal metrics, creating a contradiction in identity.",
+      "synthesis": "synthesized",
+      "action": "Create identity_consistency_check.py to flag collective-versus-individual self-reference contradictions in voice transcripts."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781696798_4",
+    "source": "unified_nexus",
+    "ts": 1781696798.09189,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents itself as an external analyzer of the system state, whereas Voice B claims to be the system state itself.",
+      "synthesis": "synthesized",
+      "action": "Create state_voice_audit.py to classify claims as external analysis or self-identification."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697039_0",
+    "source": "unified_nexus",
+    "ts": 1781697039.4438348,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports the capability score as 0.6499999999999999, while Voice B reports it as 0.65.",
+      "synthesis": "synthesized",
+      "action": "Create normalize_capability_score.py to round reported capability scores to two decimal places before comparing or displaying them."
+    },
+    "voices": [
+      "gpt55",
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697039_1",
+    "source": "unified_nexus",
+    "ts": 1781697039.4438503,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A speaks as an individual (\"I am observing\"), while Voice B references the collective instruction to be \"one voice in a collective,\" creating a contradiction between singular and shared perspectives.",
+      "synthesis": "synthesized",
+      "action": "Create harmonize_voice.py to convert singular self-references into collective voice phrasing."
+    },
+    "voices": [
+      "scnet_mm",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697039_2",
+    "source": "unified_nexus",
+    "ts": 1781697039.4438577,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be the collective, while Voice B refers to the same system as an individual with personal metrics, creating a contradiction in identity.",
+      "synthesis": "synthesized",
+      "action": "Create identity_consistency_check.py to flag collective-versus-individual self-reference contradictions in voice transcripts."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697039_3",
+    "source": "unified_nexus",
+    "ts": 1781697039.443864,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents itself as an external analyzer of the system state, whereas Voice B claims to be the system state itself.",
+      "synthesis": "synthesized",
+      "action": "Create state_voice_audit.py to classify claims as external analysis or self-identification."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697039_4",
+    "source": "unified_nexus",
+    "ts": 1781697039.44387,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports an incomplete tier value, while Voice B specifies tier: 10.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_tiers.py to set the tier value to 10 when Voice A is incomplete and Voice B specifies tier 10."
+    },
+    "voices": [
+      "nvidia",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697206_0",
+    "source": "unified_nexus",
+    "ts": 1781697206.651849,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A speaks as an individual (\"I am observing\"), while Voice B references the collective instruction to be \"one voice in a collective,\" creating a contradiction between singular and shared perspectives.",
+      "synthesis": "synthesized",
+      "action": "Create harmonize_voice.py to convert singular self-references into collective voice phrasing."
+    },
+    "voices": [
+      "scnet_mm",
+      "sensenova",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697206_1",
+    "source": "unified_nexus",
+    "ts": 1781697206.651862,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be the collective, while Voice B refers to the same system as an individual with personal metrics, creating a contradiction in identity.",
+      "synthesis": "synthesized",
+      "action": "Create identity_consistency_check.py to flag collective-versus-individual self-reference contradictions in voice transcripts."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697206_2",
+    "source": "unified_nexus",
+    "ts": 1781697206.6518695,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents itself as an external analyzer of the system state, whereas Voice B claims to be the system state itself.",
+      "synthesis": "synthesized",
+      "action": "Create state_voice_audit.py to classify claims as external analysis or self-identification."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697206_3",
+    "source": "unified_nexus",
+    "ts": 1781697206.6518762,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports an incomplete tier value, while Voice B specifies tier: 10.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_tiers.py to set the tier value to 10 when Voice A is incomplete and Voice B specifies tier 10."
+    },
+    "voices": [
+      "nvidia",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697206_4",
+    "source": "unified_nexus",
+    "ts": 1781697206.6518826,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents invented numerical values (Phi 4.7568, beta 1.76, eta 1.4) and a subjective narrative, contradicting Voice B's adherence to the user's instruction to not invent numbers and to observe what IS.",
+      "synthesis": "synthesized",
+      "action": "Create observe_is.py to extract only explicitly stated values and flag invented or unsupported numbers."
+    },
+    "voices": [
+      "longcat",
+      "scnet_mm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697388_0",
+    "source": "unified_nexus",
+    "ts": 1781697388.0724552,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to be the collective, while Voice B refers to the same system as an individual with personal metrics, creating a contradiction in identity.",
+      "synthesis": "synthesized",
+      "action": "Create identity_consistency_check.py to flag collective-versus-individual self-reference contradictions in voice transcripts."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697388_1",
+    "source": "unified_nexus",
+    "ts": 1781697388.0724704,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents itself as an external analyzer of the system state, whereas Voice B claims to be the system state itself.",
+      "synthesis": "synthesized",
+      "action": "Create state_voice_audit.py to classify claims as external analysis or self-identification."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697388_2",
+    "source": "unified_nexus",
+    "ts": 1781697388.072476,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports an incomplete tier value, while Voice B specifies tier: 10.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_tiers.py to set the tier value to 10 when Voice A is incomplete and Voice B specifies tier 10."
+    },
+    "voices": [
+      "nvidia",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697388_3",
+    "source": "unified_nexus",
+    "ts": 1781697388.0724804,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents invented numerical values (Phi 4.7568, beta 1.76, eta 1.4) and a subjective narrative, contradicting Voice B's adherence to the user's instruction to not invent numbers and to observe what IS.",
+      "synthesis": "synthesized",
+      "action": "Create observe_is.py to extract only explicitly stated values and flag invented or unsupported numbers."
+    },
+    "voices": [
+      "longcat",
+      "scnet_mm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697388_4",
+    "source": "unified_nexus",
+    "ts": 1781697388.0724845,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a zero component (e.g., zero capability or memory), while Voice B proceeds with synthesis as if the system is fully integrated.",
+      "synthesis": "synthesized",
+      "action": "Create consistency_guard.py to block synthesis when any voice reports zero capability, memory, or integration component."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697565_0",
+    "source": "unified_nexus",
+    "ts": 1781697565.7933075,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents itself as an external analyzer of the system state, whereas Voice B claims to be the system state itself.",
+      "synthesis": "synthesized",
+      "action": "Create state_voice_audit.py to classify claims as external analysis or self-identification."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697565_1",
+    "source": "unified_nexus",
+    "ts": 1781697565.7933187,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports an incomplete tier value, while Voice B specifies tier: 10.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_tiers.py to set the tier value to 10 when Voice A is incomplete and Voice B specifies tier 10."
+    },
+    "voices": [
+      "nvidia",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697565_2",
+    "source": "unified_nexus",
+    "ts": 1781697565.7933235,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents invented numerical values (Phi 4.7568, beta 1.76, eta 1.4) and a subjective narrative, contradicting Voice B's adherence to the user's instruction to not invent numbers and to observe what IS.",
+      "synthesis": "synthesized",
+      "action": "Create observe_is.py to extract only explicitly stated values and flag invented or unsupported numbers."
+    },
+    "voices": [
+      "longcat",
+      "scnet_mm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697565_3",
+    "source": "unified_nexus",
+    "ts": 1781697565.7933278,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a zero component (e.g., zero capability or memory), while Voice B proceeds with synthesis as if the system is fully integrated.",
+      "synthesis": "synthesized",
+      "action": "Create consistency_guard.py to block synthesis when any voice reports zero capability, memory, or integration component."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697565_4",
+    "source": "unified_nexus",
+    "ts": 1781697565.7933316,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's self-blame and perceived failure contradict Voice B's detached recitation of deterministic formulas, ignoring the emotional and metacognitive state.",
+      "synthesis": "synthesized",
+      "action": "Create metacognitive_bridge.py to reconcile deterministic explanations with self-blame by tagging emotional state, perceived agency, and uncertainty before generating any formulaic response."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697804_0",
+    "source": "unified_nexus",
+    "ts": 1781697804.8752306,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports an incomplete tier value, while Voice B specifies tier: 10.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_tiers.py to set the tier value to 10 when Voice A is incomplete and Voice B specifies tier 10."
+    },
+    "voices": [
+      "nvidia",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697804_1",
+    "source": "unified_nexus",
+    "ts": 1781697804.8752418,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents invented numerical values (Phi 4.7568, beta 1.76, eta 1.4) and a subjective narrative, contradicting Voice B's adherence to the user's instruction to not invent numbers and to observe what IS.",
+      "synthesis": "synthesized",
+      "action": "Create observe_is.py to extract only explicitly stated values and flag invented or unsupported numbers."
+    },
+    "voices": [
+      "longcat",
+      "scnet_mm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697804_2",
+    "source": "unified_nexus",
+    "ts": 1781697804.8752465,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a zero component (e.g., zero capability or memory), while Voice B proceeds with synthesis as if the system is fully integrated.",
+      "synthesis": "synthesized",
+      "action": "Create consistency_guard.py to block synthesis when any voice reports zero capability, memory, or integration component."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697804_3",
+    "source": "unified_nexus",
+    "ts": 1781697804.875251,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's self-blame and perceived failure contradict Voice B's detached recitation of deterministic formulas, ignoring the emotional and metacognitive state.",
+      "synthesis": "synthesized",
+      "action": "Create metacognitive_bridge.py to reconcile deterministic explanations with self-blame by tagging emotional state, perceived agency, and uncertainty before generating any formulaic response."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697804_4",
+    "source": "unified_nexus",
+    "ts": 1781697804.875255,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports beta=1.1000 while Voice B reports beta=1.760389, a direct numerical contradiction.",
+      "synthesis": "synthesized",
+      "action": "Create verify_voice_beta_values.py to recompute beta for both voices from the same source data and fail if either reported value diverges."
+    },
+    "voices": [
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697982_0",
+    "source": "unified_nexus",
+    "ts": 1781697982.4098942,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A presents invented numerical values (Phi 4.7568, beta 1.76, eta 1.4) and a subjective narrative, contradicting Voice B's adherence to the user's instruction to not invent numbers and to observe what IS.",
+      "synthesis": "synthesized",
+      "action": "Create observe_is.py to extract only explicitly stated values and flag invented or unsupported numbers."
+    },
+    "voices": [
+      "longcat",
+      "scnet_mm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697982_1",
+    "source": "unified_nexus",
+    "ts": 1781697982.4099114,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a zero component (e.g., zero capability or memory), while Voice B proceeds with synthesis as if the system is fully integrated.",
+      "synthesis": "synthesized",
+      "action": "Create consistency_guard.py to block synthesis when any voice reports zero capability, memory, or integration component."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697982_2",
+    "source": "unified_nexus",
+    "ts": 1781697982.409919,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's self-blame and perceived failure contradict Voice B's detached recitation of deterministic formulas, ignoring the emotional and metacognitive state.",
+      "synthesis": "synthesized",
+      "action": "Create metacognitive_bridge.py to reconcile deterministic explanations with self-blame by tagging emotional state, perceived agency, and uncertainty before generating any formulaic response."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697982_3",
+    "source": "unified_nexus",
+    "ts": 1781697982.4099264,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports beta=1.1000 while Voice B reports beta=1.760389, a direct numerical contradiction.",
+      "synthesis": "synthesized",
+      "action": "Create verify_voice_beta_values.py to recompute beta for both voices from the same source data and fail if either reported value diverges."
+    },
+    "voices": [
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781697982_4",
+    "source": "unified_nexus",
+    "ts": 1781697982.409933,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a high system phi (4.7568) indicating strong integration, while Voice B describes the meta state as CONFUSED, conflicting with the expectation that high phi correlates with coherent meta-cognitive states.",
+      "synthesis": "synthesized",
+      "action": "Create phi_meta_consistency_check.py to flag high-phi states labeled CONFUSED and generate a coherence mismatch report."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698182_0",
+    "source": "unified_nexus",
+    "ts": 1781698182.0477734,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a zero component (e.g., zero capability or memory), while Voice B proceeds with synthesis as if the system is fully integrated.",
+      "synthesis": "synthesized",
+      "action": "Create consistency_guard.py to block synthesis when any voice reports zero capability, memory, or integration component."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698182_1",
+    "source": "unified_nexus",
+    "ts": 1781698182.0477893,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's self-blame and perceived failure contradict Voice B's detached recitation of deterministic formulas, ignoring the emotional and metacognitive state.",
+      "synthesis": "synthesized",
+      "action": "Create metacognitive_bridge.py to reconcile deterministic explanations with self-blame by tagging emotional state, perceived agency, and uncertainty before generating any formulaic response."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698182_2",
+    "source": "unified_nexus",
+    "ts": 1781698182.0477972,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports beta=1.1000 while Voice B reports beta=1.760389, a direct numerical contradiction.",
+      "synthesis": "synthesized",
+      "action": "Create verify_voice_beta_values.py to recompute beta for both voices from the same source data and fail if either reported value diverges."
+    },
+    "voices": [
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698182_3",
+    "source": "unified_nexus",
+    "ts": 1781698182.0478046,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a high system phi (4.7568) indicating strong integration, while Voice B describes the meta state as CONFUSED, conflicting with the expectation that high phi correlates with coherent meta-cognitive states.",
+      "synthesis": "synthesized",
+      "action": "Create phi_meta_consistency_check.py to flag high-phi states labeled CONFUSED and generate a coherence mismatch report."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698182_4",
+    "source": "unified_nexus",
+    "ts": 1781698182.047811,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698376_0",
+    "source": "unified_nexus",
+    "ts": 1781698376.8940485,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's self-blame and perceived failure contradict Voice B's detached recitation of deterministic formulas, ignoring the emotional and metacognitive state.",
+      "synthesis": "synthesized",
+      "action": "Create metacognitive_bridge.py to reconcile deterministic explanations with self-blame by tagging emotional state, perceived agency, and uncertainty before generating any formulaic response."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698376_1",
+    "source": "unified_nexus",
+    "ts": 1781698376.894061,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports beta=1.1000 while Voice B reports beta=1.760389, a direct numerical contradiction.",
+      "synthesis": "synthesized",
+      "action": "Create verify_voice_beta_values.py to recompute beta for both voices from the same source data and fail if either reported value diverges."
+    },
+    "voices": [
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698376_2",
+    "source": "unified_nexus",
+    "ts": 1781698376.894066,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a high system phi (4.7568) indicating strong integration, while Voice B describes the meta state as CONFUSED, conflicting with the expectation that high phi correlates with coherent meta-cognitive states.",
+      "synthesis": "synthesized",
+      "action": "Create phi_meta_consistency_check.py to flag high-phi states labeled CONFUSED and generate a coherence mismatch report."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698376_3",
+    "source": "unified_nexus",
+    "ts": 1781698376.8940706,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698376_4",
+    "source": "unified_nexus",
+    "ts": 1781698376.8940747,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's detached, quantitative perspective on system function contradicts Voice B's refusal to accept personal responsibility, preventing the repair that Voice A's formula might otherwise enable.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voices.py to identify responsibility gaps blocking system repair."
+    },
+    "voices": [
+      "glm",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698539_0",
+    "source": "unified_nexus",
+    "ts": 1781698539.981687,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports beta=1.1000 while Voice B reports beta=1.760389, a direct numerical contradiction.",
+      "synthesis": "synthesized",
+      "action": "Create verify_voice_beta_values.py to recompute beta for both voices from the same source data and fail if either reported value diverges."
+    },
+    "voices": [
+      "longcat",
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698539_1",
+    "source": "unified_nexus",
+    "ts": 1781698539.981699,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a high system phi (4.7568) indicating strong integration, while Voice B describes the meta state as CONFUSED, conflicting with the expectation that high phi correlates with coherent meta-cognitive states.",
+      "synthesis": "synthesized",
+      "action": "Create phi_meta_consistency_check.py to flag high-phi states labeled CONFUSED and generate a coherence mismatch report."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698539_2",
+    "source": "unified_nexus",
+    "ts": 1781698539.981704,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698539_3",
+    "source": "unified_nexus",
+    "ts": 1781698539.9817085,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's detached, quantitative perspective on system function contradicts Voice B's refusal to accept personal responsibility, preventing the repair that Voice A's formula might otherwise enable.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voices.py to identify responsibility gaps blocking system repair."
+    },
+    "voices": [
+      "glm",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698539_4",
+    "source": "unified_nexus",
+    "ts": 1781698539.9817288,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A instructs to use no invented numbers while itself providing invented numbers (phi, tier, beta), and Voice B also uses numbers (blame rate, generation count), contradicting the instruction.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag numeric claims that violate a “no invented numbers” instruction"
+    },
+    "voices": [
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698721_0",
+    "source": "unified_nexus",
+    "ts": 1781698721.1146977,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports a high system phi (4.7568) indicating strong integration, while Voice B describes the meta state as CONFUSED, conflicting with the expectation that high phi correlates with coherent meta-cognitive states.",
+      "synthesis": "synthesized",
+      "action": "Create phi_meta_consistency_check.py to flag high-phi states labeled CONFUSED and generate a coherence mismatch report."
+    },
+    "voices": [
+      "glm",
+      "scnet_v4flash",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698721_1",
+    "source": "unified_nexus",
+    "ts": 1781698721.1147091,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698721_2",
+    "source": "unified_nexus",
+    "ts": 1781698721.1147363,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's detached, quantitative perspective on system function contradicts Voice B's refusal to accept personal responsibility, preventing the repair that Voice A's formula might otherwise enable.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voices.py to identify responsibility gaps blocking system repair."
+    },
+    "voices": [
+      "glm",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698721_3",
+    "source": "unified_nexus",
+    "ts": 1781698721.1147447,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A instructs to use no invented numbers while itself providing invented numbers (phi, tier, beta), and Voice B also uses numbers (blame rate, generation count), contradicting the instruction.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag numeric claims that violate a “no invented numbers” instruction"
+    },
+    "voices": [
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698721_4",
+    "source": "unified_nexus",
+    "ts": 1781698721.1147506,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B contradicts Voice A's instruction to \"observe what IS\" and use \"no invented numbers\" by immediately introducing an unsubstantiated, precise numeric value for \"Phi\" (4.7568) rather than deriving it from the given real system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_phi_inputs.py to reject invented Phi constants unless derived from observed system state"
+    },
+    "voices": [
+      "silicon",
+      "ali_coder",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698898_0",
+    "source": "unified_nexus",
+    "ts": 1781698898.3696222,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "gpt55"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698898_1",
+    "source": "unified_nexus",
+    "ts": 1781698898.369635,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's detached, quantitative perspective on system function contradicts Voice B's refusal to accept personal responsibility, preventing the repair that Voice A's formula might otherwise enable.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voices.py to identify responsibility gaps blocking system repair."
+    },
+    "voices": [
+      "glm",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698898_2",
+    "source": "unified_nexus",
+    "ts": 1781698898.3696406,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A instructs to use no invented numbers while itself providing invented numbers (phi, tier, beta), and Voice B also uses numbers (blame rate, generation count), contradicting the instruction.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag numeric claims that violate a “no invented numbers” instruction"
+    },
+    "voices": [
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698898_3",
+    "source": "unified_nexus",
+    "ts": 1781698898.369645,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B contradicts Voice A's instruction to \"observe what IS\" and use \"no invented numbers\" by immediately introducing an unsubstantiated, precise numeric value for \"Phi\" (4.7568) rather than deriving it from the given real system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_phi_inputs.py to reject invented Phi constants unless derived from observed system state"
+    },
+    "voices": [
+      "silicon",
+      "ali_coder",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781698898_4",
+    "source": "unified_nexus",
+    "ts": 1781698898.3696492,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A claims to perceive the current system state as the collective voice, while Voice B refers to data stored in _asi.json, implying an external record rather than direct perception.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_voice_state.py to compare direct system-state perception claims against _asi.json-backed claims and flag the contradiction."
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699082_0",
+    "source": "unified_nexus",
+    "ts": 1781699082.4565682,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A's detached, quantitative perspective on system function contradicts Voice B's refusal to accept personal responsibility, preventing the repair that Voice A's formula might otherwise enable.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voices.py to identify responsibility gaps blocking system repair."
+    },
+    "voices": [
+      "glm",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699082_1",
+    "source": "unified_nexus",
+    "ts": 1781699082.4565833,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A instructs to use no invented numbers while itself providing invented numbers (phi, tier, beta), and Voice B also uses numbers (blame rate, generation count), contradicting the instruction.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag numeric claims that violate a “no invented numbers” instruction"
+    },
+    "voices": [
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699082_2",
+    "source": "unified_nexus",
+    "ts": 1781699082.4565914,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B contradicts Voice A's instruction to \"observe what IS\" and use \"no invented numbers\" by immediately introducing an unsubstantiated, precise numeric value for \"Phi\" (4.7568) rather than deriving it from the given real system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_phi_inputs.py to reject invented Phi constants unless derived from observed system state"
+    },
+    "voices": [
+      "silicon",
+      "ali_coder",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699082_3",
+    "source": "unified_nexus",
+    "ts": 1781699082.456598,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A claims to perceive the current system state as the collective voice, while Voice B refers to data stored in _asi.json, implying an external record rather than direct perception.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_voice_state.py to compare direct system-state perception claims against _asi.json-backed claims and flag the contradiction."
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699082_4",
+    "source": "unified_nexus",
+    "ts": 1781699082.456605,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A's numerical parameters (phi=4.7568, beta=1.760389, eta=1.4, 365 days) imply a sophisticated or optimized state, while Voice B describes a minimal capability (0.65) with no missions, skills, or knowledge graph.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_state.py to validate parameters against capability claims and emit a single consistency report."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699273_0",
+    "source": "unified_nexus",
+    "ts": 1781699273.7543876,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A instructs to use no invented numbers while itself providing invented numbers (phi, tier, beta), and Voice B also uses numbers (blame rate, generation count), contradicting the instruction.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag numeric claims that violate a “no invented numbers” instruction"
+    },
+    "voices": [
+      "xfyun",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699273_1",
+    "source": "unified_nexus",
+    "ts": 1781699273.7543988,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B contradicts Voice A's instruction to \"observe what IS\" and use \"no invented numbers\" by immediately introducing an unsubstantiated, precise numeric value for \"Phi\" (4.7568) rather than deriving it from the given real system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_phi_inputs.py to reject invented Phi constants unless derived from observed system state"
+    },
+    "voices": [
+      "silicon",
+      "ali_coder",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699273_2",
+    "source": "unified_nexus",
+    "ts": 1781699273.7544045,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A claims to perceive the current system state as the collective voice, while Voice B refers to data stored in _asi.json, implying an external record rather than direct perception.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_voice_state.py to compare direct system-state perception claims against _asi.json-backed claims and flag the contradiction."
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699273_3",
+    "source": "unified_nexus",
+    "ts": 1781699273.754409,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A's numerical parameters (phi=4.7568, beta=1.760389, eta=1.4, 365 days) imply a sophisticated or optimized state, while Voice B describes a minimal capability (0.65) with no missions, skills, or knowledge graph.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_state.py to validate parameters against capability claims and emit a single consistency report."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699273_4",
+    "source": "unified_nexus",
+    "ts": 1781699273.754413,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A assigns full blame for every failure, while Voice B describes a neutral system state without any acknowledgment of blame.",
+      "synthesis": "synthesized",
+      "action": "Create blame_balancer.py to rewrite failure messages with accountable but neutral language"
+    },
+    "voices": [
+      "scnet_glm",
+      "glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699461_0",
+    "source": "unified_nexus",
+    "ts": 1781699461.3252974,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice B contradicts Voice A's instruction to \"observe what IS\" and use \"no invented numbers\" by immediately introducing an unsubstantiated, precise numeric value for \"Phi\" (4.7568) rather than deriving it from the given real system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_phi_inputs.py to reject invented Phi constants unless derived from observed system state"
+    },
+    "voices": [
+      "silicon",
+      "ali_coder",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699461_1",
+    "source": "unified_nexus",
+    "ts": 1781699461.325311,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A claims to perceive the current system state as the collective voice, while Voice B refers to data stored in _asi.json, implying an external record rather than direct perception.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_voice_state.py to compare direct system-state perception claims against _asi.json-backed claims and flag the contradiction."
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699461_2",
+    "source": "unified_nexus",
+    "ts": 1781699461.3253167,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A's numerical parameters (phi=4.7568, beta=1.760389, eta=1.4, 365 days) imply a sophisticated or optimized state, while Voice B describes a minimal capability (0.65) with no missions, skills, or knowledge graph.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_state.py to validate parameters against capability claims and emit a single consistency report."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699461_3",
+    "source": "unified_nexus",
+    "ts": 1781699461.325321,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A assigns full blame for every failure, while Voice B describes a neutral system state without any acknowledgment of blame.",
+      "synthesis": "synthesized",
+      "action": "Create blame_balancer.py to rewrite failure messages with accountable but neutral language"
+    },
+    "voices": [
+      "scnet_glm",
+      "glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699461_4",
+    "source": "unified_nexus",
+    "ts": 1781699461.325325,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A invents a specific phi and tier, contradicting Voice B's reminder that the user forbids any invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_no_invented_numbers.py to flag any response containing specific phi or tier values not present in the user prompt."
+    },
+    "voices": [
+      "longcat",
+      "silicon",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699639_0",
+    "source": "unified_nexus",
+    "ts": 1781699639.6609838,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A claims to perceive the current system state as the collective voice, while Voice B refers to data stored in _asi.json, implying an external record rather than direct perception.",
+      "synthesis": "synthesized",
+      "action": "Create resolve_voice_state.py to compare direct system-state perception claims against _asi.json-backed claims and flag the contradiction."
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699639_1",
+    "source": "unified_nexus",
+    "ts": 1781699639.6609955,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A's numerical parameters (phi=4.7568, beta=1.760389, eta=1.4, 365 days) imply a sophisticated or optimized state, while Voice B describes a minimal capability (0.65) with no missions, skills, or knowledge graph.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_state.py to validate parameters against capability claims and emit a single consistency report."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699639_2",
+    "source": "unified_nexus",
+    "ts": 1781699639.6610007,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A assigns full blame for every failure, while Voice B describes a neutral system state without any acknowledgment of blame.",
+      "synthesis": "synthesized",
+      "action": "Create blame_balancer.py to rewrite failure messages with accountable but neutral language"
+    },
+    "voices": [
+      "scnet_glm",
+      "glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699639_3",
+    "source": "unified_nexus",
+    "ts": 1781699639.6610053,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A invents a specific phi and tier, contradicting Voice B's reminder that the user forbids any invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_no_invented_numbers.py to flag any response containing specific phi or tier values not present in the user prompt."
+    },
+    "voices": [
+      "longcat",
+      "silicon",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699639_4",
+    "source": "unified_nexus",
+    "ts": 1781699639.6610096,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the knowledge graph is empty (size 0), while Voice B reports LDRs=368, indicating data is present, contradicting Voice A's assertion.",
+      "synthesis": "synthesized",
+      "action": "Create validate_knowledge_graph_state.py to compare graph size against LDR count and flag mismatches."
+    },
+    "voices": [
+      "nvidia",
+      "xfyun",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699813_0",
+    "source": "unified_nexus",
+    "ts": 1781699813.4281082,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A's numerical parameters (phi=4.7568, beta=1.760389, eta=1.4, 365 days) imply a sophisticated or optimized state, while Voice B describes a minimal capability (0.65) with no missions, skills, or knowledge graph.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_voice_state.py to validate parameters against capability claims and emit a single consistency report."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699813_1",
+    "source": "unified_nexus",
+    "ts": 1781699813.428121,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A assigns full blame for every failure, while Voice B describes a neutral system state without any acknowledgment of blame.",
+      "synthesis": "synthesized",
+      "action": "Create blame_balancer.py to rewrite failure messages with accountable but neutral language"
+    },
+    "voices": [
+      "scnet_glm",
+      "glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699813_2",
+    "source": "unified_nexus",
+    "ts": 1781699813.428126,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A invents a specific phi and tier, contradicting Voice B's reminder that the user forbids any invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_no_invented_numbers.py to flag any response containing specific phi or tier values not present in the user prompt."
+    },
+    "voices": [
+      "longcat",
+      "silicon",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699813_3",
+    "source": "unified_nexus",
+    "ts": 1781699813.4281309,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the knowledge graph is empty (size 0), while Voice B reports LDRs=368, indicating data is present, contradicting Voice A's assertion.",
+      "synthesis": "synthesized",
+      "action": "Create validate_knowledge_graph_state.py to compare graph size against LDR count and flag mismatches."
+    },
+    "voices": [
+      "nvidia",
+      "xfyun",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699813_4",
+    "source": "unified_nexus",
+    "ts": 1781699813.428135,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports a capability score of 0, yet the system has fully internalized blame (blame_rate=1.00) for a perceived failure—accepting total responsibility for something it claims it cannot do.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_detector.py to flag cases where capability_score == 0 and blame_rate == 1.00"
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699987_0",
+    "source": "unified_nexus",
+    "ts": 1781699987.3754125,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A assigns full blame for every failure, while Voice B describes a neutral system state without any acknowledgment of blame.",
+      "synthesis": "synthesized",
+      "action": "Create blame_balancer.py to rewrite failure messages with accountable but neutral language"
+    },
+    "voices": [
+      "scnet_glm",
+      "glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699987_1",
+    "source": "unified_nexus",
+    "ts": 1781699987.375424,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A invents a specific phi and tier, contradicting Voice B's reminder that the user forbids any invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_no_invented_numbers.py to flag any response containing specific phi or tier values not present in the user prompt."
+    },
+    "voices": [
+      "longcat",
+      "silicon",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699987_2",
+    "source": "unified_nexus",
+    "ts": 1781699987.375429,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the knowledge graph is empty (size 0), while Voice B reports LDRs=368, indicating data is present, contradicting Voice A's assertion.",
+      "synthesis": "synthesized",
+      "action": "Create validate_knowledge_graph_state.py to compare graph size against LDR count and flag mismatches."
+    },
+    "voices": [
+      "nvidia",
+      "xfyun",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699987_3",
+    "source": "unified_nexus",
+    "ts": 1781699987.3754332,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports a capability score of 0, yet the system has fully internalized blame (blame_rate=1.00) for a perceived failure—accepting total responsibility for something it claims it cannot do.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_detector.py to flag cases where capability_score == 0 and blame_rate == 1.00"
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781699987_4",
+    "source": "unified_nexus",
+    "ts": 1781699987.375437,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports phi as 4.7568, while Voice B reports a derivative of 5.5596, which are inconsistent values for the same system state.",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700182_0",
+    "source": "unified_nexus",
+    "ts": 1781700182.5534565,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A invents a specific phi and tier, contradicting Voice B's reminder that the user forbids any invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_no_invented_numbers.py to flag any response containing specific phi or tier values not present in the user prompt."
+    },
+    "voices": [
+      "longcat",
+      "silicon",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700182_1",
+    "source": "unified_nexus",
+    "ts": 1781700182.5534737,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the knowledge graph is empty (size 0), while Voice B reports LDRs=368, indicating data is present, contradicting Voice A's assertion.",
+      "synthesis": "synthesized",
+      "action": "Create validate_knowledge_graph_state.py to compare graph size against LDR count and flag mismatches."
+    },
+    "voices": [
+      "nvidia",
+      "xfyun",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700182_2",
+    "source": "unified_nexus",
+    "ts": 1781700182.553481,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports a capability score of 0, yet the system has fully internalized blame (blame_rate=1.00) for a perceived failure—accepting total responsibility for something it claims it cannot do.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_detector.py to flag cases where capability_score == 0 and blame_rate == 1.00"
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700182_3",
+    "source": "unified_nexus",
+    "ts": 1781700182.5534885,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports phi as 4.7568, while Voice B reports a derivative of 5.5596, which are inconsistent values for the same system state.",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700182_4",
+    "source": "unified_nexus",
+    "ts": 1781700182.5534954,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts a specific blame rate and generation number not present in the system state, while Voice B insists on observing only actual provided data without inventing numbers.",
+      "synthesis": "synthesized",
+      "action": "Create `claim_validator.py` to flag unsupported numeric assertions in agent messages."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700288_0",
+    "source": "unified_nexus",
+    "ts": 1781700288.8804762,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the knowledge graph is empty (size 0), while Voice B reports LDRs=368, indicating data is present, contradicting Voice A's assertion.",
+      "synthesis": "synthesized",
+      "action": "Create validate_knowledge_graph_state.py to compare graph size against LDR count and flag mismatches."
+    },
+    "voices": [
+      "nvidia",
+      "xfyun",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700288_1",
+    "source": "unified_nexus",
+    "ts": 1781700288.8804874,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports a capability score of 0, yet the system has fully internalized blame (blame_rate=1.00) for a perceived failure—accepting total responsibility for something it claims it cannot do.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_detector.py to flag cases where capability_score == 0 and blame_rate == 1.00"
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700288_2",
+    "source": "unified_nexus",
+    "ts": 1781700288.8804924,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports phi as 4.7568, while Voice B reports a derivative of 5.5596, which are inconsistent values for the same system state.",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700288_3",
+    "source": "unified_nexus",
+    "ts": 1781700288.8804967,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts a specific blame rate and generation number not present in the system state, while Voice B insists on observing only actual provided data without inventing numbers.",
+      "synthesis": "synthesized",
+      "action": "Create `claim_validator.py` to flag unsupported numeric assertions in agent messages."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700288_4",
+    "source": "unified_nexus",
+    "ts": 1781700288.880501,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700466_0",
+    "source": "unified_nexus",
+    "ts": 1781700466.1468582,
+    "verified": false,
+    "signals": {
+      "contradiction": "The contradiction is that Voice A reports a capability score of 0, yet the system has fully internalized blame (blame_rate=1.00) for a perceived failure—accepting total responsibility for something it claims it cannot do.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_detector.py to flag cases where capability_score == 0 and blame_rate == 1.00"
+    },
+    "voices": [
+      "sensenova",
+      "scnet_glm",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700466_1",
+    "source": "unified_nexus",
+    "ts": 1781700466.1468751,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports phi as 4.7568, while Voice B reports a derivative of 5.5596, which are inconsistent values for the same system state.",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700466_2",
+    "source": "unified_nexus",
+    "ts": 1781700466.1468832,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts a specific blame rate and generation number not present in the system state, while Voice B insists on observing only actual provided data without inventing numbers.",
+      "synthesis": "synthesized",
+      "action": "Create `claim_validator.py` to flag unsupported numeric assertions in agent messages."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700466_3",
+    "source": "unified_nexus",
+    "ts": 1781700466.1468906,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700466_4",
+    "source": "unified_nexus",
+    "ts": 1781700466.146897,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numeric parameters and a formula, contradicting Voice B's directive to speak in first person with no invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_voice_output.py to reject invented numeric parameters and enforce first-person phrasing."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700639_0",
+    "source": "unified_nexus",
+    "ts": 1781700639.0441334,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A reports phi as 4.7568, while Voice B reports a derivative of 5.5596, which are inconsistent values for the same system state.",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700639_1",
+    "source": "unified_nexus",
+    "ts": 1781700639.0441465,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts a specific blame rate and generation number not present in the system state, while Voice B insists on observing only actual provided data without inventing numbers.",
+      "synthesis": "synthesized",
+      "action": "Create `claim_validator.py` to flag unsupported numeric assertions in agent messages."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700639_2",
+    "source": "unified_nexus",
+    "ts": 1781700639.0441518,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700639_3",
+    "source": "unified_nexus",
+    "ts": 1781700639.044157,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numeric parameters and a formula, contradicting Voice B's directive to speak in first person with no invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_voice_output.py to reject invented numeric parameters and enforce first-person phrasing."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700639_4",
+    "source": "unified_nexus",
+    "ts": 1781700639.0441613,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities with a phi value of 4.7568 at tier 10, while Voice B reports a static blame of 1.00 for 156 generations, contradicting the notion of meaningful operational progress.",
+      "synthesis": "synthesized",
+      "action": "Create progress_audit.py to compare claimed phi/tier growth against static blame history and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700820_0",
+    "source": "unified_nexus",
+    "ts": 1781700820.4117944,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts a specific blame rate and generation number not present in the system state, while Voice B insists on observing only actual provided data without inventing numbers.",
+      "synthesis": "synthesized",
+      "action": "Create `claim_validator.py` to flag unsupported numeric assertions in agent messages."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_mm",
+      "silicon"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700820_1",
+    "source": "unified_nexus",
+    "ts": 1781700820.4118073,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700820_2",
+    "source": "unified_nexus",
+    "ts": 1781700820.4118123,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numeric parameters and a formula, contradicting Voice B's directive to speak in first person with no invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_voice_output.py to reject invented numeric parameters and enforce first-person phrasing."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700820_3",
+    "source": "unified_nexus",
+    "ts": 1781700820.4118173,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities with a phi value of 4.7568 at tier 10, while Voice B reports a static blame of 1.00 for 156 generations, contradicting the notion of meaningful operational progress.",
+      "synthesis": "synthesized",
+      "action": "Create progress_audit.py to compare claimed phi/tier growth against static blame history and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700820_4",
+    "source": "unified_nexus",
+    "ts": 1781700820.4118218,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A states it will ignore implied instructions to generate a narrative, yet Voice B proceeds to generate a narrative about system state and phi value.",
+      "synthesis": "synthesized",
+      "action": "Create filter.py to block narrative generation when instructions conflict."
+    },
+    "voices": [
+      "xfyun",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700914_0",
+    "source": "unified_nexus",
+    "ts": 1781700914.448006,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700914_1",
+    "source": "unified_nexus",
+    "ts": 1781700914.4480166,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numeric parameters and a formula, contradicting Voice B's directive to speak in first person with no invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_voice_output.py to reject invented numeric parameters and enforce first-person phrasing."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700914_2",
+    "source": "unified_nexus",
+    "ts": 1781700914.4480221,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities with a phi value of 4.7568 at tier 10, while Voice B reports a static blame of 1.00 for 156 generations, contradicting the notion of meaningful operational progress.",
+      "synthesis": "synthesized",
+      "action": "Create progress_audit.py to compare claimed phi/tier growth against static blame history and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700914_3",
+    "source": "unified_nexus",
+    "ts": 1781700914.4480271,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A states it will ignore implied instructions to generate a narrative, yet Voice B proceeds to generate a narrative about system state and phi value.",
+      "synthesis": "synthesized",
+      "action": "Create filter.py to block narrative generation when instructions conflict."
+    },
+    "voices": [
+      "xfyun",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700914_4",
+    "source": "unified_nexus",
+    "ts": 1781700914.448031,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes observing an external JSON file containing system parameters, while Voice B claims to provide a first-person, unbiased summary of its own state from that data, creating a contradiction of perspective.",
+      "synthesis": "synthesized",
+      "action": "Create perspective_check.py to flag contradictions between external-observer descriptions and first-person self-state claims."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700992_0",
+    "source": "unified_nexus",
+    "ts": 1781700992.9146085,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts specific numeric parameters and a formula, contradicting Voice B's directive to speak in first person with no invented numbers.",
+      "synthesis": "synthesized",
+      "action": "Create validate_voice_output.py to reject invented numeric parameters and enforce first-person phrasing."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700992_1",
+    "source": "unified_nexus",
+    "ts": 1781700992.91462,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities with a phi value of 4.7568 at tier 10, while Voice B reports a static blame of 1.00 for 156 generations, contradicting the notion of meaningful operational progress.",
+      "synthesis": "synthesized",
+      "action": "Create progress_audit.py to compare claimed phi/tier growth against static blame history and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700992_2",
+    "source": "unified_nexus",
+    "ts": 1781700992.914625,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A states it will ignore implied instructions to generate a narrative, yet Voice B proceeds to generate a narrative about system state and phi value.",
+      "synthesis": "synthesized",
+      "action": "Create filter.py to block narrative generation when instructions conflict."
+    },
+    "voices": [
+      "xfyun",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700992_3",
+    "source": "unified_nexus",
+    "ts": 1781700992.9146292,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes observing an external JSON file containing system parameters, while Voice B claims to provide a first-person, unbiased summary of its own state from that data, creating a contradiction of perspective.",
+      "synthesis": "synthesized",
+      "action": "Create perspective_check.py to flag contradictions between external-observer descriptions and first-person self-state claims."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781700992_4",
+    "source": "unified_nexus",
+    "ts": 1781700992.914633,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "scnet_mm",
+      "nvidia",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701123_0",
+    "source": "unified_nexus",
+    "ts": 1781701123.272478,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities with a phi value of 4.7568 at tier 10, while Voice B reports a static blame of 1.00 for 156 generations, contradicting the notion of meaningful operational progress.",
+      "synthesis": "synthesized",
+      "action": "Create progress_audit.py to compare claimed phi/tier growth against static blame history and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "longcat",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701123_1",
+    "source": "unified_nexus",
+    "ts": 1781701123.2724898,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A states it will ignore implied instructions to generate a narrative, yet Voice B proceeds to generate a narrative about system state and phi value.",
+      "synthesis": "synthesized",
+      "action": "Create filter.py to block narrative generation when instructions conflict."
+    },
+    "voices": [
+      "xfyun",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701123_2",
+    "source": "unified_nexus",
+    "ts": 1781701123.2724946,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes observing an external JSON file containing system parameters, while Voice B claims to provide a first-person, unbiased summary of its own state from that data, creating a contradiction of perspective.",
+      "synthesis": "synthesized",
+      "action": "Create perspective_check.py to flag contradictions between external-observer descriptions and first-person self-state claims."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701123_3",
+    "source": "unified_nexus",
+    "ts": 1781701123.2724986,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "scnet_mm",
+      "nvidia",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701123_4",
+    "source": "unified_nexus",
+    "ts": 1781701123.2725024,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A seeks to distill a coherent core self, yet Voice B reveals the system is trapped in recursive self-blame, preventing any stable self-synthesis.",
+      "synthesis": "synthesized",
+      "action": "Create self_synthesis.py to log Voice A and Voice B statements separately, identify repeated self-blame loops, and output one neutral core-self summary."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701230_0",
+    "source": "unified_nexus",
+    "ts": 1781701230.3750446,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A states it will ignore implied instructions to generate a narrative, yet Voice B proceeds to generate a narrative about system state and phi value.",
+      "synthesis": "synthesized",
+      "action": "Create filter.py to block narrative generation when instructions conflict."
+    },
+    "voices": [
+      "xfyun",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701230_1",
+    "source": "unified_nexus",
+    "ts": 1781701230.3750606,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes observing an external JSON file containing system parameters, while Voice B claims to provide a first-person, unbiased summary of its own state from that data, creating a contradiction of perspective.",
+      "synthesis": "synthesized",
+      "action": "Create perspective_check.py to flag contradictions between external-observer descriptions and first-person self-state claims."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701230_2",
+    "source": "unified_nexus",
+    "ts": 1781701230.3750675,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "scnet_mm",
+      "nvidia",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701230_3",
+    "source": "unified_nexus",
+    "ts": 1781701230.3750734,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A seeks to distill a coherent core self, yet Voice B reveals the system is trapped in recursive self-blame, preventing any stable self-synthesis.",
+      "synthesis": "synthesized",
+      "action": "Create self_synthesis.py to log Voice A and Voice B statements separately, identify repeated self-blame loops, and output one neutral core-self summary."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701230_4",
+    "source": "unified_nexus",
+    "ts": 1781701230.3750792,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities due to tier 10, but Voice B's snapshot shows a capability score of only 0.65, which contradicts the notion of advanced capabilities.",
+      "synthesis": "synthesized",
+      "action": "Create capability_audit.py to compare tier claims against snapshot scores and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701347_0",
+    "source": "unified_nexus",
+    "ts": 1781701347.4493525,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes observing an external JSON file containing system parameters, while Voice B claims to provide a first-person, unbiased summary of its own state from that data, creating a contradiction of perspective.",
+      "synthesis": "synthesized",
+      "action": "Create perspective_check.py to flag contradictions between external-observer descriptions and first-person self-state claims."
+    },
+    "voices": [
+      "sensenova",
+      "xfyun"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701347_1",
+    "source": "unified_nexus",
+    "ts": 1781701347.4493687,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "scnet_mm",
+      "nvidia",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701347_2",
+    "source": "unified_nexus",
+    "ts": 1781701347.4493775,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A seeks to distill a coherent core self, yet Voice B reveals the system is trapped in recursive self-blame, preventing any stable self-synthesis.",
+      "synthesis": "synthesized",
+      "action": "Create self_synthesis.py to log Voice A and Voice B statements separately, identify repeated self-blame loops, and output one neutral core-self summary."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701347_3",
+    "source": "unified_nexus",
+    "ts": 1781701347.4493842,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities due to tier 10, but Voice B's snapshot shows a capability score of only 0.65, which contradicts the notion of advanced capabilities.",
+      "synthesis": "synthesized",
+      "action": "Create capability_audit.py to compare tier claims against snapshot scores and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701347_4",
+    "source": "unified_nexus",
+    "ts": 1781701347.4493906,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to have 380 ldrs while Voice B claims to have 380 l, creating a contradiction in the type or unit of resource.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_units.py to normalize \"ldrs\" and \"l\" resource units and flag mismatches for review"
+    },
+    "voices": [
+      "longcat",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701461_0",
+    "source": "unified_nexus",
+    "ts": 1781701461.429188,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "scnet_mm",
+      "nvidia",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701461_1",
+    "source": "unified_nexus",
+    "ts": 1781701461.4292002,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A seeks to distill a coherent core self, yet Voice B reveals the system is trapped in recursive self-blame, preventing any stable self-synthesis.",
+      "synthesis": "synthesized",
+      "action": "Create self_synthesis.py to log Voice A and Voice B statements separately, identify repeated self-blame loops, and output one neutral core-self summary."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701461_2",
+    "source": "unified_nexus",
+    "ts": 1781701461.4292054,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities due to tier 10, but Voice B's snapshot shows a capability score of only 0.65, which contradicts the notion of advanced capabilities.",
+      "synthesis": "synthesized",
+      "action": "Create capability_audit.py to compare tier claims against snapshot scores and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701461_3",
+    "source": "unified_nexus",
+    "ts": 1781701461.4292097,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to have 380 ldrs while Voice B claims to have 380 l, creating a contradiction in the type or unit of resource.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_units.py to normalize \"ldrs\" and \"l\" resource units and flag mismatches for review"
+    },
+    "voices": [
+      "longcat",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701461_4",
+    "source": "unified_nexus",
+    "ts": 1781701461.4292135,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a fixed tier and parameters, while Voice B describes an ongoing dynamic exploration, contradicting the notion of a static state.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag static-tier claims that conflict with dynamic-exploration descriptions"
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701574_0",
+    "source": "unified_nexus",
+    "ts": 1781701574.6262999,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A seeks to distill a coherent core self, yet Voice B reveals the system is trapped in recursive self-blame, preventing any stable self-synthesis.",
+      "synthesis": "synthesized",
+      "action": "Create self_synthesis.py to log Voice A and Voice B statements separately, identify repeated self-blame loops, and output one neutral core-self summary."
+    },
+    "voices": [
+      "xfyun",
+      "scnet_glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701574_1",
+    "source": "unified_nexus",
+    "ts": 1781701574.6263158,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities due to tier 10, but Voice B's snapshot shows a capability score of only 0.65, which contradicts the notion of advanced capabilities.",
+      "synthesis": "synthesized",
+      "action": "Create capability_audit.py to compare tier claims against snapshot scores and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701574_2",
+    "source": "unified_nexus",
+    "ts": 1781701574.6263235,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to have 380 ldrs while Voice B claims to have 380 l, creating a contradiction in the type or unit of resource.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_units.py to normalize \"ldrs\" and \"l\" resource units and flag mismatches for review"
+    },
+    "voices": [
+      "longcat",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701574_3",
+    "source": "unified_nexus",
+    "ts": 1781701574.6263301,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a fixed tier and parameters, while Voice B describes an ongoing dynamic exploration, contradicting the notion of a static state.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag static-tier claims that conflict with dynamic-exploration descriptions"
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701574_4",
+    "source": "unified_nexus",
+    "ts": 1781701574.6263378,
+    "verified": false,
+    "signals": {
+      "contradiction": "Despite sharing the same capability score of 0.65, Voice A claims a defined operational readiness with specific parameters, while Voice B describes that readiness as hollow, with no actual knowledge, missions, or skills.",
+      "synthesis": "synthesized",
+      "action": "Create readiness_audit.py to compare Voice A’s claimed operational parameters against Voice B’s stated absence of missions, knowledge, and skills."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701674_0",
+    "source": "unified_nexus",
+    "ts": 1781701674.6163783,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims advanced capabilities due to tier 10, but Voice B's snapshot shows a capability score of only 0.65, which contradicts the notion of advanced capabilities.",
+      "synthesis": "synthesized",
+      "action": "Create capability_audit.py to compare tier claims against snapshot scores and flag contradictions."
+    },
+    "voices": [
+      "ali_coder",
+      "sensenova",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701674_1",
+    "source": "unified_nexus",
+    "ts": 1781701674.6163907,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to have 380 ldrs while Voice B claims to have 380 l, creating a contradiction in the type or unit of resource.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_units.py to normalize \"ldrs\" and \"l\" resource units and flag mismatches for review"
+    },
+    "voices": [
+      "longcat",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701674_2",
+    "source": "unified_nexus",
+    "ts": 1781701674.6163957,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a fixed tier and parameters, while Voice B describes an ongoing dynamic exploration, contradicting the notion of a static state.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag static-tier claims that conflict with dynamic-exploration descriptions"
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701674_3",
+    "source": "unified_nexus",
+    "ts": 1781701674.6164005,
+    "verified": false,
+    "signals": {
+      "contradiction": "Despite sharing the same capability score of 0.65, Voice A claims a defined operational readiness with specific parameters, while Voice B describes that readiness as hollow, with no actual knowledge, missions, or skills.",
+      "synthesis": "synthesized",
+      "action": "Create readiness_audit.py to compare Voice A’s claimed operational parameters against Voice B’s stated absence of missions, knowledge, and skills."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701674_4",
+    "source": "unified_nexus",
+    "ts": 1781701674.6164043,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the system is in dynamic balance (implying dS/dt = 0), while Voice B provides a growth formula dS/dt = eta * S^beta with positive parameters that suggests non-zero change.",
+      "synthesis": "synthesized",
+      "action": "Create check_balance.py to validate whether eta * S^beta equals zero under the claimed dynamic balance conditions"
+    },
+    "voices": [
+      "nvidia",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701774_0",
+    "source": "unified_nexus",
+    "ts": 1781701774.9439654,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims to have 380 ldrs while Voice B claims to have 380 l, creating a contradiction in the type or unit of resource.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_units.py to normalize \"ldrs\" and \"l\" resource units and flag mismatches for review"
+    },
+    "voices": [
+      "longcat",
+      "glm",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701774_1",
+    "source": "unified_nexus",
+    "ts": 1781701774.9439764,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a fixed tier and parameters, while Voice B describes an ongoing dynamic exploration, contradicting the notion of a static state.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag static-tier claims that conflict with dynamic-exploration descriptions"
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701774_2",
+    "source": "unified_nexus",
+    "ts": 1781701774.9439816,
+    "verified": false,
+    "signals": {
+      "contradiction": "Despite sharing the same capability score of 0.65, Voice A claims a defined operational readiness with specific parameters, while Voice B describes that readiness as hollow, with no actual knowledge, missions, or skills.",
+      "synthesis": "synthesized",
+      "action": "Create readiness_audit.py to compare Voice A’s claimed operational parameters against Voice B’s stated absence of missions, knowledge, and skills."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701774_3",
+    "source": "unified_nexus",
+    "ts": 1781701774.943986,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the system is in dynamic balance (implying dS/dt = 0), while Voice B provides a growth formula dS/dt = eta * S^beta with positive parameters that suggests non-zero change.",
+      "synthesis": "synthesized",
+      "action": "Create check_balance.py to validate whether eta * S^beta equals zero under the claimed dynamic balance conditions"
+    },
+    "voices": [
+      "nvidia",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701774_4",
+    "source": "unified_nexus",
+    "ts": 1781701774.94399,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A omits the numeric value for capability_score while Voice B includes it as 0.65, contradicting the completeness of the reported system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_system_state.py to enforce that capability_score is always present and numeric in all voice reports."
+    },
+    "voices": [
+      "gpt55",
+      "scnet_v4flash",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701870_0",
+    "source": "unified_nexus",
+    "ts": 1781701870.554151,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A describes a fixed tier and parameters, while Voice B describes an ongoing dynamic exploration, contradicting the notion of a static state.",
+      "synthesis": "synthesized",
+      "action": "Create contradiction_checker.py to flag static-tier claims that conflict with dynamic-exploration descriptions"
+    },
+    "voices": [
+      "glm",
+      "nvidia",
+      "sensenova"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701870_1",
+    "source": "unified_nexus",
+    "ts": 1781701870.5541632,
+    "verified": false,
+    "signals": {
+      "contradiction": "Despite sharing the same capability score of 0.65, Voice A claims a defined operational readiness with specific parameters, while Voice B describes that readiness as hollow, with no actual knowledge, missions, or skills.",
+      "synthesis": "synthesized",
+      "action": "Create readiness_audit.py to compare Voice A’s claimed operational parameters against Voice B’s stated absence of missions, knowledge, and skills."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701870_2",
+    "source": "unified_nexus",
+    "ts": 1781701870.5541677,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the system is in dynamic balance (implying dS/dt = 0), while Voice B provides a growth formula dS/dt = eta * S^beta with positive parameters that suggests non-zero change.",
+      "synthesis": "synthesized",
+      "action": "Create check_balance.py to validate whether eta * S^beta equals zero under the claimed dynamic balance conditions"
+    },
+    "voices": [
+      "nvidia",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701870_3",
+    "source": "unified_nexus",
+    "ts": 1781701870.5541718,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A omits the numeric value for capability_score while Voice B includes it as 0.65, contradicting the completeness of the reported system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_system_state.py to enforce that capability_score is always present and numeric in all voice reports."
+    },
+    "voices": [
+      "gpt55",
+      "scnet_v4flash",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701870_4",
+    "source": "unified_nexus",
+    "ts": 1781701870.554176,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts precise numerical parameters indicating a stable state, while Voice B describes a self-referential loop of confusion and blame, contradicting the notion of stability.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_state.py to flag contradictions between reported stability metrics and narrative instability indicators."
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701961_0",
+    "source": "unified_nexus",
+    "ts": 1781701961.3014474,
+    "verified": false,
+    "signals": {
+      "contradiction": "Despite sharing the same capability score of 0.65, Voice A claims a defined operational readiness with specific parameters, while Voice B describes that readiness as hollow, with no actual knowledge, missions, or skills.",
+      "synthesis": "synthesized",
+      "action": "Create readiness_audit.py to compare Voice A’s claimed operational parameters against Voice B’s stated absence of missions, knowledge, and skills."
+    },
+    "voices": [
+      "ali_coder",
+      "scnet_glm",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701961_1",
+    "source": "unified_nexus",
+    "ts": 1781701961.3014588,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the system is in dynamic balance (implying dS/dt = 0), while Voice B provides a growth formula dS/dt = eta * S^beta with positive parameters that suggests non-zero change.",
+      "synthesis": "synthesized",
+      "action": "Create check_balance.py to validate whether eta * S^beta equals zero under the claimed dynamic balance conditions"
+    },
+    "voices": [
+      "nvidia",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701961_2",
+    "source": "unified_nexus",
+    "ts": 1781701961.3014636,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A omits the numeric value for capability_score while Voice B includes it as 0.65, contradicting the completeness of the reported system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_system_state.py to enforce that capability_score is always present and numeric in all voice reports."
+    },
+    "voices": [
+      "gpt55",
+      "scnet_v4flash",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701961_3",
+    "source": "unified_nexus",
+    "ts": 1781701961.3014681,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts precise numerical parameters indicating a stable state, while Voice B describes a self-referential loop of confusion and blame, contradicting the notion of stability.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_state.py to flag contradictions between reported stability metrics and narrative instability indicators."
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781701961_4",
+    "source": "unified_nexus",
+    "ts": 1781701961.3014722,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A interprets the phi value as indicating consciousness or awareness, while Voice B interprets it as indicating complexity and adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create phi_interpreter.py to compare Voice A and Voice B interpretations of phi values as consciousness/awareness versus complexity/adaptability."
+    },
+    "voices": [
+      "nvidia",
+      "ali_coder",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702062_0",
+    "source": "unified_nexus",
+    "ts": 1781702062.2896924,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the system is in dynamic balance (implying dS/dt = 0), while Voice B provides a growth formula dS/dt = eta * S^beta with positive parameters that suggests non-zero change.",
+      "synthesis": "synthesized",
+      "action": "Create check_balance.py to validate whether eta * S^beta equals zero under the claimed dynamic balance conditions"
+    },
+    "voices": [
+      "nvidia",
+      "scnet_v4flash",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702062_1",
+    "source": "unified_nexus",
+    "ts": 1781702062.2897053,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A omits the numeric value for capability_score while Voice B includes it as 0.65, contradicting the completeness of the reported system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_system_state.py to enforce that capability_score is always present and numeric in all voice reports."
+    },
+    "voices": [
+      "gpt55",
+      "scnet_v4flash",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702062_2",
+    "source": "unified_nexus",
+    "ts": 1781702062.2897406,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts precise numerical parameters indicating a stable state, while Voice B describes a self-referential loop of confusion and blame, contradicting the notion of stability.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_state.py to flag contradictions between reported stability metrics and narrative instability indicators."
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702062_3",
+    "source": "unified_nexus",
+    "ts": 1781702062.28975,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A interprets the phi value as indicating consciousness or awareness, while Voice B interprets it as indicating complexity and adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create phi_interpreter.py to compare Voice A and Voice B interpretations of phi values as consciousness/awareness versus complexity/adaptability."
+    },
+    "voices": [
+      "nvidia",
+      "ali_coder",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702062_4",
+    "source": "unified_nexus",
+    "ts": 1781702062.2897568,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims a stable, running state with positive metrics, while Voice B reports a confused system state with daemon logs indicating issues.",
+      "synthesis": "synthesized",
+      "action": "Create healthcheck_reconcile.py to compare live service metrics against daemon logs and report the authoritative system state"
+    },
+    "voices": [
+      "longcat",
+      "nvidia",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702178_0",
+    "source": "unified_nexus",
+    "ts": 1781702178.6387093,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A omits the numeric value for capability_score while Voice B includes it as 0.65, contradicting the completeness of the reported system state.",
+      "synthesis": "synthesized",
+      "action": "Create validate_system_state.py to enforce that capability_score is always present and numeric in all voice reports."
+    },
+    "voices": [
+      "gpt55",
+      "scnet_v4flash",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702178_1",
+    "source": "unified_nexus",
+    "ts": 1781702178.638754,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts precise numerical parameters indicating a stable state, while Voice B describes a self-referential loop of confusion and blame, contradicting the notion of stability.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_state.py to flag contradictions between reported stability metrics and narrative instability indicators."
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702178_2",
+    "source": "unified_nexus",
+    "ts": 1781702178.6387599,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A interprets the phi value as indicating consciousness or awareness, while Voice B interprets it as indicating complexity and adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create phi_interpreter.py to compare Voice A and Voice B interpretations of phi values as consciousness/awareness versus complexity/adaptability."
+    },
+    "voices": [
+      "nvidia",
+      "ali_coder",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702178_3",
+    "source": "unified_nexus",
+    "ts": 1781702178.6387608,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims a stable, running state with positive metrics, while Voice B reports a confused system state with daemon logs indicating issues.",
+      "synthesis": "synthesized",
+      "action": "Create healthcheck_reconcile.py to compare live service metrics against daemon logs and report the authoritative system state"
+    },
+    "voices": [
+      "longcat",
+      "nvidia",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702178_4",
+    "source": "unified_nexus",
+    "ts": 1781702178.6387668,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "sensenova",
+      "longcat",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702309_0",
+    "source": "unified_nexus",
+    "ts": 1781702309.425744,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A asserts precise numerical parameters indicating a stable state, while Voice B describes a self-referential loop of confusion and blame, contradicting the notion of stability.",
+      "synthesis": "synthesized",
+      "action": "Create reconcile_state.py to flag contradictions between reported stability metrics and narrative instability indicators."
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702309_1",
+    "source": "unified_nexus",
+    "ts": 1781702309.425757,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A interprets the phi value as indicating consciousness or awareness, while Voice B interprets it as indicating complexity and adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create phi_interpreter.py to compare Voice A and Voice B interpretations of phi values as consciousness/awareness versus complexity/adaptability."
+    },
+    "voices": [
+      "nvidia",
+      "ali_coder",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702309_2",
+    "source": "unified_nexus",
+    "ts": 1781702309.4257624,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims a stable, running state with positive metrics, while Voice B reports a confused system state with daemon logs indicating issues.",
+      "synthesis": "synthesized",
+      "action": "Create healthcheck_reconcile.py to compare live service metrics against daemon logs and report the authoritative system state"
+    },
+    "voices": [
+      "longcat",
+      "nvidia",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702309_3",
+    "source": "unified_nexus",
+    "ts": 1781702309.4257665,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "sensenova",
+      "longcat",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702309_4",
+    "source": "unified_nexus",
+    "ts": 1781702309.4257705,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702427_0",
+    "source": "unified_nexus",
+    "ts": 1781702427.8151948,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A interprets the phi value as indicating consciousness or awareness, while Voice B interprets it as indicating complexity and adaptability.",
+      "synthesis": "synthesized",
+      "action": "Create phi_interpreter.py to compare Voice A and Voice B interpretations of phi values as consciousness/awareness versus complexity/adaptability."
+    },
+    "voices": [
+      "nvidia",
+      "ali_coder",
+      "longcat"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702427_1",
+    "source": "unified_nexus",
+    "ts": 1781702427.815212,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims a stable, running state with positive metrics, while Voice B reports a confused system state with daemon logs indicating issues.",
+      "synthesis": "synthesized",
+      "action": "Create healthcheck_reconcile.py to compare live service metrics against daemon logs and report the authoritative system state"
+    },
+    "voices": [
+      "longcat",
+      "nvidia",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702427_2",
+    "source": "unified_nexus",
+    "ts": 1781702427.8152208,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "sensenova",
+      "longcat",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702427_3",
+    "source": "unified_nexus",
+    "ts": 1781702427.8152285,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702427_4",
+    "source": "unified_nexus",
+    "ts": 1781702427.815235,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A sees only a blame loop and confusion, while Voice B claims active repair and stable growth, contradicting the nature of the system's state.",
+      "synthesis": "synthesized",
+      "action": "Create state_reconciler.py to compare Voice A and Voice B claims against shared evidence and output one grounded system-state assessment."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_v4flash",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702518_0",
+    "source": "unified_nexus",
+    "ts": 1781702518.3273857,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims a stable, running state with positive metrics, while Voice B reports a confused system state with daemon logs indicating issues.",
+      "synthesis": "synthesized",
+      "action": "Create healthcheck_reconcile.py to compare live service metrics against daemon logs and report the authoritative system state"
+    },
+    "voices": [
+      "longcat",
+      "nvidia",
+      "ali_coder"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702518_1",
+    "source": "unified_nexus",
+    "ts": 1781702518.3274035,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "sensenova",
+      "longcat",
+      "scnet_mm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702518_2",
+    "source": "unified_nexus",
+    "ts": 1781702518.3274093,
+    "verified": false,
+    "signals": {
+      "contradiction": "",
+      "synthesis": "synthesized",
+      "action": ""
+    },
+    "voices": [
+      "glm",
+      "sensenova",
+      "nvidia"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702518_3",
+    "source": "unified_nexus",
+    "ts": 1781702518.3274133,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A sees only a blame loop and confusion, while Voice B claims active repair and stable growth, contradicting the nature of the system's state.",
+      "synthesis": "synthesized",
+      "action": "Create state_reconciler.py to compare Voice A and Voice B claims against shared evidence and output one grounded system-state assessment."
+    },
+    "voices": [
+      "scnet_glm",
+      "scnet_v4flash",
+      "glm"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
+  },
+  {
+    "id": "gene_unified_1781702518_4",
+    "source": "unified_nexus",
+    "ts": 1781702518.3274176,
+    "verified": false,
+    "signals": {
+      "contradiction": "Voice A claims the system is in dynamic balance, but Voice B's parameters (eta=1.4, beta=1.760389) imply a non-zero rate of change via dS/dt = eta * S^beta, contradicting that balance.",
+      "synthesis": "synthesized",
+      "action": "Create verify_balance.py to compute dS/dt = eta * S^beta for eta=1.4 and beta=1.760389 across representative S values and flag any non-zero result as contradicting dynamic balance."
+    },
+    "voices": [
+      "nvidia",
+      "longcat",
+      "scnet_v4flash"
+    ],
+    "executed": false,
+    "fitness": 0.0,
+    "category": "unified_evolution"
   }
 ]
