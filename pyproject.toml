@@ -44,6 +44,10 @@ no_implicit_optional = true
 files = ["superclaw"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
+
 [tool.coverage.run]
 source = ["superclaw", "glue.py"]
 omit = ["*/tests/*", "*/verify*.py"]
