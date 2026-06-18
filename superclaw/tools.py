@@ -118,8 +118,13 @@ class ToolRegistry:
 
 def build_default_tools(cfg_workspace: str,
                         shell: bool = True, file_tools: bool = True,
-                        web: bool = False, think: bool = True) -> ToolRegistry:
-    """创建默认工具"""
+                        web: bool = False, think: bool = True,
+                        github: bool = False) -> ToolRegistry:
+    """创建默认工具
+
+    github=True 时额外注册 GitHub 能力获取工具（github_search / github_clone /
+    github_download / pip_install），默认不启用。
+    """
     tools = ToolRegistry()
     tools.set_workspace(cfg_workspace)
 
@@ -245,6 +250,89 @@ def build_default_tools(cfg_workspace: str,
     tools.register("memory_read", _memory_read,
                    "读取记忆库中指定路径的 md 文件完整内容。先用 memory 工具检索找到路径。",
                    {"path": {"type": "string", "description": "md 文件路径（如 SOUL.md）"}})
+
+    # GitHub 能力获取工具 — 自进化的能力获取环节（默认不启用）
+    if github:
+        from .github_tools import (
+            DependencyInstaller,
+            FileDownloader,
+            GitHubSearcher,
+            RepoCloner,
+        )
+
+        _gh_searcher = GitHubSearcher()
+        _gh_cloner = RepoCloner(target_dir=tools._workspace / "skills" / "repos")
+        _gh_downloader = FileDownloader()
+        _gh_installer = DependencyInstaller()
+
+        def _github_search(query: str, language: str = "python",
+                           kind: str = "repos", limit: int = 5) -> str:
+            """搜索 GitHub 仓库或代码"""
+            limit = max(1, min(int(limit), 10))
+            if kind == "code":
+                results = _gh_searcher.search_code(query, language=language, limit=limit)
+            else:
+                results = _gh_searcher.search_repos(query, language=language, limit=limit)
+            # 结构化错误检测
+            if results and "error" in results[0]:
+                return f"[错误] {results[0]['error']}"
+            if not results:
+                return "[无结果] 未找到匹配项"
+            lines = []
+            for i, r in enumerate(results, 1):
+                if kind == "code":
+                    lines.append(f"{i}. {r.get('repository', '')}/{r.get('path', '')} "
+                                 f"— {r.get('html_url', '')}")
+                else:
+                    lines.append(f"{i}. {r.get('full_name', '')} "
+                                 f"({r.get('stargazers_count', 0)}★) — "
+                                 f"{r.get('description', '')}")
+                    lines.append(f"   clone: {r.get('clone_url', '')}")
+            return "\n".join(lines)
+
+        tools.register("github_search", _github_search,
+                       "搜索 GitHub 仓库或代码。kind=repos 搜仓库，kind=code 搜代码。"
+                       "返回名称/描述/星数/clone_url 等。",
+                       {"query": {"type": "string", "description": "搜索关键词"},
+                        "language": {"type": "string", "description": "编程语言（默认 python）"},
+                        "kind": {"type": "string", "description": "repos 或 code（默认 repos）"},
+                        "limit": {"type": "integer", "description": "返回数量（1-10，默认 5）"}})
+
+        def _github_clone(url: str, name: str = "") -> str:
+            """浅克隆 GitHub 仓库到 skills/repos/"""
+            target = _gh_cloner.clone(url, name=name or None)
+            if target is None:
+                return f"[错误] 克隆失败：{url}（URL 须以 https://github.com/ 开头，目录不能已存在）"
+            return f"[成功] 已克隆到 {target}"
+        tools.register("github_clone", _github_clone,
+                       "浅克隆 GitHub 仓库（--depth 1）到 skills/repos/。"
+                       "URL 必须以 https://github.com/ 开头。",
+                       {"url": {"type": "string", "description": "仓库 URL（https://github.com/user/repo.git）"},
+                        "name": {"type": "string", "description": "本地目录名（可选）"}})
+
+        def _github_download(url: str, target_path: str) -> str:
+            """下载 GitHub raw 文件"""
+            target = _gh_downloader.download_raw(url, Path(target_path))
+            if target is None:
+                return f"[错误] 下载失败：{url}（URL 须为 raw.githubusercontent.com 或 github.com/*/raw/，限 1MB）"
+            return f"[成功] 已下载到 {target}"
+        tools.register("github_download", _github_download,
+                       "下载 GitHub raw 单文件。URL 须为 raw.githubusercontent.com 或 "
+                       "github.com/*/raw/ 格式，文件限 1MB。",
+                       {"url": {"type": "string", "description": "GitHub raw 文件 URL"},
+                        "target_path": {"type": "string", "description": "本地保存路径"}})
+
+        def _pip_install(package: str) -> str:
+            """安装白名单内的 pip 包"""
+            ok = _gh_installer.install(package)
+            if ok:
+                return f"[成功] 已安装 {package}"
+            allowed = ", ".join(sorted(_gh_installer.allowed_packages))
+            return f"[错误] 安装失败：{package}（包名须合法且在白名单内：{allowed}）"
+        tools.register("pip_install", _pip_install,
+                       "安装 pip 包（仅限白名单：requests/httpx/aiohttp/beautifulsoup4/"
+                       "lxml/pyyaml/tomli）。包名须匹配 ^[a-zA-Z0-9_-]+$。",
+                       {"package": {"type": "string", "description": "包名"}})
 
     return tools
 

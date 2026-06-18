@@ -19,6 +19,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from .capability_registry import (
+    CapabilityRegistry,
+    DEFAULT_CAPABILITIES,
+    analyze_gaps,
+)
+
 
 # ============================================================
 # APEX 四问反思系统（来自 self_reflect.py）
@@ -38,15 +44,29 @@ class SelfReflection:
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def reflect(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """执行四问反思，返回结构化结果"""
+    def reflect(self, state: Dict[str, Any],
+                capability_registry: Optional[CapabilityRegistry] = None,
+                task_requirements: Optional[List[str]] = None) -> Dict[str, Any]:
+        """执行四问反思，返回结构化结果
+
+        Args:
+            state: 进化状态（phi/tier/fitness/mutations/knowledge 等）
+            capability_registry: 可选，能力注册表。提供后 _gaps 会输出真实能力缺口
+                （基于 analyze_gaps），而非模板字符串。
+            task_requirements: 可选，任务需要的能力名列表。提供 registry 但未提供
+                此参数时，默认以 DEFAULT_CAPABILITIES 的能力名为基准。
+        """
         phi = state.get("phi", 0)
         tier = state.get("tier", 1)
         fitness = state.get("fitness", 0.5)
         mutations = state.get("mutations", 0)
         knowledge = state.get("knowledge", 0)
 
-        gaps = self._gaps(phi, tier, fitness, mutations, knowledge)
+        gaps = self._gaps(
+            phi, tier, fitness, mutations, knowledge,
+            capability_registry=capability_registry,
+            task_requirements=task_requirements,
+        )
         opportunities = self._opportunities(phi, mutations, knowledge)
         improvements = self._improvements(fitness, phi)
         problems = self._problems(state)
@@ -66,7 +86,14 @@ class SelfReflection:
         self._save(reflection)
         return reflection
 
-    def _gaps(self, phi, tier, fitness, mutations, knowledge) -> List[str]:
+    def _gaps(self, phi, tier, fitness, mutations, knowledge,
+              capability_registry: Optional[CapabilityRegistry] = None,
+              task_requirements: Optional[List[str]] = None) -> List[str]:
+        # 真实能力缺口分析：提供 registry 时走 analyze_gaps，输出结构化短板
+        if capability_registry is not None:
+            return self._capability_gaps(capability_registry, task_requirements)
+
+        # 向后兼容：无 registry 时走原模板逻辑
         gaps = []
         if tier < 5:
             gaps.append(f"当前 Tier=T{tier}，距离 T5(ASI) 还有 {5-tier} 层")
@@ -79,6 +106,24 @@ class SelfReflection:
         if not gaps:
             gaps.append("暂无显著差距，保持当前进化节奏")
         return gaps
+
+    def _capability_gaps(self, registry: CapabilityRegistry,
+                         task_requirements: Optional[List[str]] = None) -> List[str]:
+        """基于能力注册表输出真实缺口（替换模板字符串感知）"""
+        required = task_requirements
+        if required is None:
+            required = [c.name for c in DEFAULT_CAPABILITIES]
+        structured = analyze_gaps(registry, required)
+        if not structured:
+            return ["能力清单完整，无显著能力缺口"]
+        lines: List[str] = []
+        for gap in structured:
+            line = (f"缺少能力 {gap.missing_capability}"
+                    f"（{gap.severity}）：建议 {gap.suggested_action}")
+            if gap.search_query:
+                line += f"；搜索关键词：{gap.search_query}"
+            lines.append(line)
+        return lines
 
     def _opportunities(self, phi, mutations, knowledge) -> List[str]:
         opps = []

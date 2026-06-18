@@ -32,6 +32,33 @@ from .gep_schema import (
 from .memory import MemoryStore
 from .llm_router import LLMRouter, get_router, CompletionResult
 
+# ============================================================
+# 自进化模块导入 — 可选依赖，导入失败不阻断核心 GEP 循环
+# ============================================================
+try:
+    from .capability_registry import Capability, analyze_gaps
+    _CAPABILITY_REGISTRY_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _CAPABILITY_REGISTRY_AVAILABLE = False
+
+try:
+    from .github_tools import GitHubSearcher, FileDownloader
+    _GITHUB_TOOLS_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _GITHUB_TOOLS_AVAILABLE = False
+
+try:
+    from .code_generator import CodeSpec, GeneratedCode
+    _CODE_GENERATOR_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _CODE_GENERATOR_AVAILABLE = False
+
+try:
+    from .evolution_validator import EvolutionAction
+    _EVOLUTION_VALIDATOR_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _EVOLUTION_VALIDATOR_AVAILABLE = False
+
 
 # ============================================================
 # 信号提取器 — 对照 Evolver analyzer.js
@@ -253,7 +280,13 @@ class GEPEngine:
                  memory: Optional[MemoryStore] = None,
                  llm: Optional[LLMRouter] = None,
                  strategy: str = "balanced",
-                 workspace: Optional[Path] = None):
+                 workspace: Optional[Path] = None,
+                 capability_registry: Optional[Any] = None,
+                 code_generator: Optional[Any] = None,
+                 sandbox_executor: Optional[Any] = None,
+                 dynamic_loader: Optional[Any] = None,
+                 evolution_validator: Optional[Any] = None,
+                 project_root: Optional[Path] = None):
         self.workspace = workspace or Path(__file__).parent.parent.resolve()
         self.memory = memory or MemoryStore(self.workspace)
         self.llm = llm or get_router()
@@ -261,6 +294,27 @@ class GEPEngine:
         self.library = GeneLibrary(self.workspace / "gep-library")
         self.signal_extractor = SignalExtractor(self.memory, self.llm)
         self.cycle_count = 0
+
+        # ---- 自进化模块（可选，全部 None 时走原有逻辑）----
+        self.capability_registry = capability_registry
+        self.code_generator = code_generator
+        self.sandbox_executor = sandbox_executor
+        self.dynamic_loader = dynamic_loader
+        self.evolution_validator = evolution_validator
+        self.project_root = Path(project_root) if project_root else self.workspace
+
+        # 是否启用 _real 步骤（只有显式传入新模块实例时才启用）
+        self._use_real_steps: bool = all([
+            self.code_generator is not None,
+            self.sandbox_executor is not None,
+            self.dynamic_loader is not None,
+            self.evolution_validator is not None,
+        ])
+
+        # 缓存上一次 _real 步骤的中间结果（跨 step 传递）
+        self._last_generated_code: Optional[Any] = None
+        self._last_sandbox_result: Optional[Any] = None
+        self._last_tool_file: Optional[Path] = None
 
     def run_cycle(self) -> Dict[str, Any]:
         """执行一个完整的 10 步进化循环"""
@@ -300,7 +354,10 @@ class GEPEngine:
         result["steps"]["4_generate_prompt"] = {"prompt_length": len(prompt)}
 
         # ---- Step 5: Execute Modify ----
-        modification = self._step_execute_modify(prompt, category)
+        if self._use_real_steps:
+            modification = self._step_execute_modify_real(prompt, category)
+        else:
+            modification = self._step_execute_modify(prompt, category)
         result["steps"]["5_execute_modify"] = {
             "provider": modification.provider,
             "error": modification.error,
@@ -308,13 +365,21 @@ class GEPEngine:
         }
 
         # ---- Step 6: Validate Tests ----
-        validation = self._step_validate(modification, category)
+        if self._use_real_steps:
+            validation = self._step_validate_real(modification, category)
+        else:
+            validation = self._step_validate(modification, category)
         result["steps"]["6_validate"] = validation
 
         # ---- Step 7: Solidify ----
-        capsule = self._step_solidify(
-            signals, category, modification, validation, selected_gene
-        )
+        if self._use_real_steps:
+            capsule = self._step_solidify_real(
+                signals, category, modification, validation, selected_gene
+            )
+        else:
+            capsule = self._step_solidify(
+                signals, category, modification, validation, selected_gene
+            )
         result["steps"]["7_solidify"] = {
             "capsule_id": capsule.id if capsule else None,
             "solidified": capsule is not None,
@@ -512,6 +577,250 @@ class GEPEngine:
             return capsule
         return None
 
+    # ============================================================
+    # _real 步骤实现 — 用自进化模块替换占位逻辑
+    # 仅在 __init__ 显式传入新模块实例时启用
+    # ============================================================
+
+    def _step_execute_modify_real(self, prompt: str,
+                                   category: str) -> CompletionResult:
+        """Step 5 (real): 用 CodeGenerator 生成代码 + SandboxExecutor 验证
+
+        替换原 _step_execute_modify 的"只调 LLM 拿文本"逻辑：
+        1. 从 prompt/category 构造 CodeSpec
+        2. CodeGenerator.generate(spec) → GeneratedCode
+        3. SandboxExecutor.execute(generated_code) → SandboxResult
+        4. 返回 CompletionResult（content=生成的代码）
+
+        失败时返回带 error 的 CompletionResult。
+        """
+        # 清空上一次的中间结果
+        self._last_generated_code = None
+        self._last_sandbox_result = None
+        self._last_tool_file = None
+
+        if self.code_generator is None or self.sandbox_executor is None:
+            return CompletionResult(
+                content="", provider="code_generator", model="",
+                error="code_generator 或 sandbox_executor 未配置",
+            )
+
+        try:
+            # 构造 CodeSpec — 用 category + cycle_count 生成唯一工具名
+            tool_name = f"{category}_tool_{self.cycle_count}"
+            spec = CodeSpec(
+                name=tool_name,
+                description=f"GEP {category} 进化：基于信号生成的新能力",
+                signature=f"def {tool_name}(*args, **kwargs) -> dict",
+                parameters=[],
+                context=prompt[:500],
+                language="python",
+            )
+
+            # 生成代码
+            generated = self.code_generator.generate(spec)
+            self._last_generated_code = generated
+
+            # 沙箱验证
+            sandbox_result = self.sandbox_executor.execute(generated)
+            self._last_sandbox_result = sandbox_result
+
+            return CompletionResult(
+                content=generated.code,
+                provider=generated.llm_provider or "code_generator",
+                model="code_generator",
+                tokens_used=generated.tokens_used,
+                error=None if sandbox_result.passed else (
+                    "沙箱验证失败: " + "; ".join(sandbox_result.errors)
+                ),
+            )
+        except Exception as e:
+            return CompletionResult(
+                content="", provider="code_generator", model="",
+                error=f"代码生成/沙箱执行异常: {e}",
+            )
+
+    def _step_validate_real(self, modification: CompletionResult,
+                             category: str) -> Dict[str, Any]:
+        """Step 6 (real): 用 SandboxResult 判断验证结果
+
+        替换原 _step_validate 的"只看文本长度"逻辑：
+        - import_ok + call_ok + test_ok → score=0.9, passed=True
+        - 否则 → score=0.0, passed=False, reason=errors
+        """
+        if modification.error:
+            return {
+                "passed": False,
+                "reason": f"代码生成/沙箱错误: {modification.error}",
+                "score": 0.0,
+            }
+
+        sandbox_result = self._last_sandbox_result
+        if sandbox_result is None:
+            return {
+                "passed": False,
+                "reason": "无沙箱验证结果",
+                "score": 0.0,
+            }
+
+        if sandbox_result.passed:
+            return {
+                "passed": True,
+                "reason": "沙箱验证通过（import + call + test）",
+                "score": 0.9,
+                "action": f"{category}_tool_generated",
+                "provider": modification.provider,
+                "tokens": modification.tokens_used,
+                "sandbox": {
+                    "import_ok": sandbox_result.import_ok,
+                    "call_ok": sandbox_result.call_ok,
+                    "test_ok": sandbox_result.test_ok,
+                    "duration_ms": sandbox_result.duration_ms,
+                },
+            }
+
+        return {
+            "passed": False,
+            "reason": "沙箱验证失败: " + "; ".join(sandbox_result.errors),
+            "score": 0.0,
+            "sandbox": {
+                "import_ok": sandbox_result.import_ok,
+                "call_ok": sandbox_result.call_ok,
+                "test_ok": sandbox_result.test_ok,
+                "errors": sandbox_result.errors,
+            },
+        }
+
+    def _step_solidify_real(self, signals: List[Signal], category: str,
+                             modification: CompletionResult,
+                             validation: Dict[str, Any],
+                             gene: Optional[Gene]) -> Optional[Capsule]:
+        """Step 7 (real): 注册工具 + EvolutionValidator 验证 + 创建 Capsule
+
+        替换原 _step_solidify 的"只创建 Capsule 数据结构"逻辑：
+        1. 用 DynamicToolLoader.load_from_code() 注册工具
+        2. 用 EvolutionValidator.validate_evolution() 验证（含 blast radius + 回滚）
+        3. critical 风险 → 拒绝，返回 None
+        4. 验证失败 → 回滚，返回 None
+        5. 验证通过 → 创建 Capsule，注册新能力到 CapabilityRegistry
+
+        安全边界：
+        - 只能新增能力（写到 dynamic-tools/），不能修改 superclaw/ 核心包
+        - critical 风险直接拒绝（EvolutionValidator 自动判定）
+        - 所有外部调用 try-except 包裹
+        """
+        if not validation.get("passed"):
+            return None
+
+        generated = self._last_generated_code
+        if generated is None:
+            return None
+
+        if self.dynamic_loader is None or self.evolution_validator is None:
+            return None
+
+        try:
+            # 1. 用 DynamicToolLoader 注册工具
+            tool_name = generated.name
+            registered = self.dynamic_loader.load_from_code(
+                code=generated.code,
+                module_name=generated.name,
+                tool_name=tool_name,
+                function_name=generated.name,
+                description=f"GEP {category} 进化生成的工具",
+                params=[],
+                force=False,
+            )
+
+            if not registered:
+                return None
+
+            # 记录工具文件路径（用于 EvolutionAction）
+            tool_file = self.dynamic_loader.tools_dir / f"{generated.name}.py"
+            self._last_tool_file = tool_file
+
+            # 2. 创建快照（用于回滚）
+            snapshot_id = None
+            snapshot_mgr = getattr(self.evolution_validator, "snapshot_mgr", None)
+            if snapshot_mgr is not None:
+                try:
+                    snapshot_id = snapshot_mgr.create_snapshot(
+                        files=[tool_file],
+                        label=f"gep_{category}_{self.cycle_count}",
+                    )
+                except Exception:
+                    snapshot_id = None
+
+            # 3. 构造 EvolutionAction
+            action = EvolutionAction(
+                action_type="add_tool",
+                target_files=[tool_file],
+                backup_snapshot_id=snapshot_id,
+                description=f"GEP {category} 进化：新增工具 {tool_name}",
+            )
+
+            # 4. 验证（含 blast radius + 测试 + 回滚）
+            validation_result = self.evolution_validator.validate_evolution(action)
+
+            if not validation_result.passed:
+                # 验证失败（critical 或测试失败）→ 不创建 Capsule
+                # EvolutionValidator 已经处理了回滚
+                return None
+
+            # 5. 验证通过 → 创建 Capsule
+            capsule = Capsule(
+                trigger=[s.pattern for s in signals[:3]],
+                gene=gene.id if gene else None,
+                summary=f"{category} 进化: 新增工具 {tool_name}",
+                confidence=validation.get("score", 0.9),
+                outcome={
+                    "status": "success",
+                    "score": validation.get("score", 0.9),
+                    "tool_name": tool_name,
+                    "blast_radius": validation_result.blast_radius.risk_level,
+                },
+                source_type="generated",
+                derivation_tokens={
+                    "input_tokens": 0,
+                    "output_tokens": modification.tokens_used,
+                    "total_tokens": modification.tokens_used,
+                    "basis": "measured",
+                } if modification.tokens_used else None,
+                content=modification.content[:500] if modification.content else None,
+                strategy=[category],
+                execution_trace=[{
+                    "step": "code_generate_and_sandbox",
+                    "provider": modification.provider,
+                    "tool_name": tool_name,
+                    "sandbox_passed": True,
+                }],
+            )
+
+            # 6. 注册新能力到 CapabilityRegistry
+            if self.capability_registry is not None:
+                try:
+                    new_cap = Capability(
+                        name=tool_name,
+                        description=f"GEP {category} 进化生成的工具",
+                        category="tool",
+                        source="generated",
+                        enabled=True,
+                    )
+                    self.capability_registry.register(new_cap)
+                    save_fn = getattr(self.capability_registry, "save", None)
+                    if save_fn is not None:
+                        save_fn()
+                except Exception:
+                    pass  # 注册失败不阻断主流程
+
+            # 策略管理器决定是否固化
+            if self.strategy_mgr.should_solidify(capsule):
+                return capsule
+            return None
+
+        except Exception:
+            return None
+
     def _step_publish(self, capsule: Optional[Capsule],
                        gene: Optional[Gene], category: str) -> bool:
         """Step 8: 发布到 Gene 库
@@ -644,3 +953,301 @@ class GEPEngine:
             time.sleep(0.1)
 
         return results
+
+    # ============================================================
+    # 完整自进化循环 — 感知短板 → 获取能力 → 自我构建 → 验证闭环
+    # ============================================================
+
+    def run_self_evolution_cycle(self,
+                                  task_requirements: Optional[List[str]] = None
+                                  ) -> Dict[str, Any]:
+        """完整自进化循环：感知短板 → 获取能力 → 自我构建 → 验证闭环
+
+        安全边界：
+        - 只能新增能力（写到 dynamic-tools/ 或 skills/）
+        - 不能修改 superclaw/ 核心包（EvolutionValidator 自动拒绝 critical）
+        - critical 风险直接拒绝 + 回滚
+        - 所有外部调用 try-except 包裹
+
+        Args:
+            task_requirements: 任务需要的能力名列表（None 时用默认任务集）
+
+        Returns:
+            包含 gaps/acquired/validated/rolled_back/rejected/errors 字段的字典
+        """
+        result: Dict[str, Any] = {
+            "timestamp": datetime.now().isoformat(),
+            "cycle": self.cycle_count + 1,
+            "gaps": [],
+            "acquired": [],
+            "validated": [],
+            "rolled_back": [],
+            "rejected": [],
+            "errors": [],
+            "status": "success",
+        }
+
+        # ---- 检查必要模块 ----
+        if self.capability_registry is None:
+            result["status"] = "skipped"
+            result["errors"].append("capability_registry 未配置，跳过自进化")
+            return result
+
+        if not self._use_real_steps:
+            result["status"] = "skipped"
+            result["errors"].append("自进化模块未完整配置，跳过")
+            return result
+
+        # 此时 _use_real_steps=True，所有模块都已配置（mypy 无法推断，显式断言）
+        sandbox_executor = self.sandbox_executor
+        dynamic_loader = self.dynamic_loader
+        evolution_validator = self.evolution_validator
+        if (sandbox_executor is None or dynamic_loader is None
+                or evolution_validator is None):
+            result["status"] = "skipped"
+            result["errors"].append("自进化模块未完整配置，跳过")
+            return result
+
+        # ---- Step 1: 感知短板 ----
+        try:
+            if task_requirements is None:
+                # 默认任务集：检测一些常见但 superclaw 未注册的能力
+                task_requirements = [
+                    "weather_query", "fetch_url", "parse_json",
+                ]
+
+            gaps = analyze_gaps(self.capability_registry, task_requirements)
+            result["gaps"] = [
+                {
+                    "missing_capability": g.missing_capability,
+                    "severity": g.severity,
+                    "suggested_action": g.suggested_action,
+                    "search_query": g.search_query,
+                }
+                for g in gaps
+            ]
+        except Exception as e:
+            result["status"] = "failed"
+            result["errors"].append(f"短板感知失败: {e}")
+            return result
+
+        if not gaps:
+            result["status"] = "no_gaps"
+            return result
+
+        # ---- Step 2-4: 对每个 gap 获取能力 + 自我构建 + 验证 ----
+        for gap in gaps:
+            gap_info = {
+                "missing_capability": gap.missing_capability,
+                "severity": gap.severity,
+                "suggested_action": gap.suggested_action,
+            }
+
+            try:
+                # 跳过 manual（无法自动获取）
+                if gap.suggested_action == "manual":
+                    result["rejected"].append({
+                        **gap_info,
+                        "reason": "manual action required",
+                    })
+                    continue
+
+                generated_code = None
+
+                # ---- Step 2: 获取能力 ----
+                if gap.suggested_action == "github_search":
+                    generated_code = self._acquire_from_github(gap)
+                    # GitHub 搜索失败（无网络/rate limit）→ 回退到代码生成
+                    if generated_code is None:
+                        generated_code = self._acquire_from_generator(gap)
+                elif gap.suggested_action == "code_generate":
+                    generated_code = self._acquire_from_generator(gap)
+
+                if generated_code is None:
+                    result["rejected"].append({
+                        **gap_info,
+                        "reason": "capability acquisition failed",
+                    })
+                    continue
+
+                result["acquired"].append({
+                    **gap_info,
+                    "code_name": generated_code.name,
+                    "code_length": len(generated_code.code),
+                })
+
+                # ---- Step 3: 自我构建（沙箱验证 + 注册工具）----
+                sandbox_result = sandbox_executor.execute(generated_code)
+                if not sandbox_result.passed:
+                    result["rejected"].append({
+                        **gap_info,
+                        "reason": f"sandbox failed: {'; '.join(sandbox_result.errors)}",
+                    })
+                    continue
+
+                # 注册工具
+                tool_name = generated_code.name
+                registered = dynamic_loader.load_from_code(
+                    code=generated_code.code,
+                    module_name=generated_code.name,
+                    tool_name=tool_name,
+                    function_name=generated_code.name,
+                    description=f"自进化生成：{gap.missing_capability}",
+                    params=[],
+                    force=False,
+                )
+
+                if not registered:
+                    result["rejected"].append({
+                        **gap_info,
+                        "reason": "tool registration failed",
+                    })
+                    continue
+
+                tool_file = dynamic_loader.tools_dir / f"{generated_code.name}.py"
+
+                # ---- Step 4: 验证闭环 ----
+                # 创建快照（用于回滚）
+                snapshot_id = None
+                snapshot_mgr = getattr(evolution_validator, "snapshot_mgr", None)
+                if snapshot_mgr is not None:
+                    try:
+                        snapshot_id = snapshot_mgr.create_snapshot(
+                            files=[tool_file],
+                            label=f"self_evo_{gap.missing_capability}",
+                        )
+                    except Exception:
+                        pass
+
+                action = EvolutionAction(
+                    action_type="add_tool",
+                    target_files=[tool_file],
+                    backup_snapshot_id=snapshot_id,
+                    description=f"自进化：新增能力 {gap.missing_capability}",
+                )
+
+                validation_result = evolution_validator.validate_evolution(action)
+
+                if not validation_result.passed:
+                    if validation_result.rollback_performed:
+                        result["rolled_back"].append({
+                            **gap_info,
+                            "reason": "; ".join(validation_result.errors),
+                            "snapshot_id": snapshot_id,
+                        })
+                    else:
+                        result["rejected"].append({
+                            **gap_info,
+                            "reason": "; ".join(validation_result.errors),
+                            "risk_level": validation_result.blast_radius.risk_level,
+                        })
+                    continue
+
+                # ---- 验证通过 → 注册新能力 ----
+                try:
+                    new_cap = Capability(
+                        name=gap.missing_capability,
+                        description="自进化生成的能力",
+                        category="tool",
+                        source="generated",
+                        enabled=True,
+                    )
+                    self.capability_registry.register(new_cap)
+                    save_fn = getattr(self.capability_registry, "save", None)
+                    if save_fn is not None:
+                        save_fn()
+                except Exception:
+                    pass  # 注册失败不阻断主流程
+
+                result["validated"].append({
+                    **gap_info,
+                    "tool_name": tool_name,
+                    "risk_level": validation_result.blast_radius.risk_level,
+                    "test_passed": validation_result.test_result.passed_count,
+                })
+
+            except Exception as e:
+                result["errors"].append(
+                    f"处理 gap {gap.missing_capability} 失败: {e}"
+                )
+                result["rejected"].append({
+                    **gap_info,
+                    "reason": f"exception: {e}",
+                })
+
+        # 总结状态
+        if result["errors"] and not result["validated"]:
+            result["status"] = "failed"
+        elif result["validated"]:
+            result["status"] = "success"
+        else:
+            result["status"] = "no_acquisition"
+
+        self.cycle_count += 1
+        return result
+
+    def _acquire_from_github(self, gap: Any) -> Optional[Any]:
+        """从 GitHub 搜索获取能力（搜索 + 下载代码）
+
+        安全：所有调用 try-except，失败返回 None
+        """
+        if not _GITHUB_TOOLS_AVAILABLE:
+            return None
+        try:
+            searcher = GitHubSearcher()
+            results = searcher.search_code(gap.search_query, limit=3)
+
+            # 过滤错误结果
+            valid_results = [
+                r for r in results
+                if "error" not in r and r.get("download_url")
+            ]
+            if not valid_results:
+                return None
+
+            # 取第一个结果，下载代码
+            downloader = FileDownloader()
+            target_dir = self.workspace / "dynamic-tools"
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target_path = target_dir / f"{gap.missing_capability}.py"
+
+            downloaded = downloader.download_raw(
+                valid_results[0]["download_url"], target_path
+            )
+            if downloaded is None:
+                return None
+
+            # 读取下载的代码
+            code_text = downloaded.read_text(encoding="utf-8")
+
+            return GeneratedCode(
+                name=gap.missing_capability,
+                code=code_text,
+                imports=[],
+                dependencies=[],
+                test_code="",
+                llm_provider="github_search",
+                tokens_used=0,
+            )
+        except Exception:
+            return None
+
+    def _acquire_from_generator(self, gap: Any) -> Optional[Any]:
+        """用 CodeGenerator 生成能力
+
+        安全：所有调用 try-except，失败返回 None
+        """
+        if self.code_generator is None or not _CODE_GENERATOR_AVAILABLE:
+            return None
+        try:
+            spec = CodeSpec(
+                name=gap.missing_capability,
+                description=f"自进化生成能力：{gap.missing_capability}",
+                signature=f"def {gap.missing_capability}(*args, **kwargs) -> dict",
+                parameters=[],
+                context=f"Gap severity: {gap.severity}, search query: {gap.search_query}",
+                language="python",
+            )
+            return self.code_generator.generate(spec)
+        except Exception:
+            return None
