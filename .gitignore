@@ -7,37 +7,45 @@ dist/
 build/
 .eggs/
 *.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
 
-# C
+# C / Rust 构建产物
 *.o
 *.a
 *.so
 core-dna/c-core-pipe
-
-# Rust
-core-dna/rust_pipe/target/
 core-dna/rust-engine-pipe
+core-dna/rust_pipe/target/
 
-# Runtime data
+# 运行时数据（由程序生成，不纳入版本控制）
 memory/
 logs/
 apex-state/
 gep-library/
+generated/
+code-backups/
+
+# 运行时文件
 *.jsonl
 *.log
+*.pid
+*.bak
+*.tmp
 
-# IDE
+# IDE / OS
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Env
+# 环境变量
 .env
 .env.local
-core-dna/c-core

@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "superclaw"
+version = "2.3.0"
+description = "Self-evolving AI — C core × Rust × Python (GEP + APEX + LLM)"
+readme = "MEMORY.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "superclaw" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "pytest-cov>=4.0",
+    "mypy>=1.5",
+    "pyflakes>=3.0",
+]
+feishu = [
+    "lark-oapi>=1.0",
+]
+
+[project.scripts]
+superclaw = "cli:main"
+
+[tool.setuptools]
+packages = ["superclaw", "superclaw.channels"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+# 增量引入：先只检查 superclaw 包，不阻断 CI
+files = ["superclaw"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["superclaw", "glue.py"]
+omit = ["*/tests/*", "*/verify*.py"]

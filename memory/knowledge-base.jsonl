@@ -1,8 +1,0 @@
-{"id":"k001","domain":"哲学","topic":"实践论","insight":"实践是检验真理的唯一标准","source":"毛泽东选集","confidence":0.95,"timestamp":"2026-05-12"}
-{"id":"k002","domain":"哲学","topic":"矛盾论","insight":"矛盾是发展的根本原因，捉住主要矛盾","source":"毛泽东选集","confidence":0.95,"timestamp":"2026-05-12"}
-{"id":"k003","domain":"进化","topic":"APEX公式","insight":"14维度评估，乘法版暴露短板","source":"自研","confidence":0.85,"timestamp":"2026-05-12"}
-{"id":"k004","domain":"进化","topic":"太极阴阳","insight":"4p(1-p)，平衡=1，偏阳偏阴=0","source":"自研","confidence":0.90,"timestamp":"2026-05-12"}
-{"id":"k005","domain":"Agent","topic":"A2A协议","insight":"Agent间通信标准，全球协作","source":"Google","confidence":0.85,"timestamp":"2026-05-12"}
-{"id":"k006","domain":"战略","topic":"持久战","insight":"分阶段进化，不求速胜","source":"毛泽东选集","confidence":0.95,"timestamp":"2026-05-12"}
-{"id":"k007","domain":"方法论","topic":"知行合一","insight":"知道就要做到，做完才说","source":"王阳明","confidence":0.90,"timestamp":"2026-05-12"}
-{"id":"k008","domain":"AI","topic":"EvoAgentX","insight":"TextGrad优化prompt，AFlow优化拓扑","source":"ICLR 2026","confidence":0.85,"timestamp":"2026-05-12"}

@@ -1,5 +1,0 @@
-[2026-05-18 20:56:14] [WARN] [Dispatcher] 检查 longcat-evaluator.py 异常: name 're' is not defined
-[2026-05-18 20:56:14] [WARN] [Dispatcher] 检查 glue.py 异常: name 're' is not defined
-[2026-05-18 20:56:14] [WARN] [Dispatcher] 检查 hybrid-llm.py 异常: name 're' is not defined
-[2026-05-18 20:56:14] [WARN] [Dispatcher] 检查 evolution-dispatcher.py 异常: name 're' is not defined
-[2026-05-18 20:56:14] [WARN] [Dispatcher] 检查 c-core-llm-bridge.py 异常: name 're' is not defined

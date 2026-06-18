@@ -553,7 +553,7 @@ class GEPEngine:
             cycle=self.cycle_count,
             phi=phi_before,
             domain=category,
-            gene_id=capsule.gene if capsule else "",
+            gene_id=(capsule.gene if capsule else "") or "",
             score=validation.get("score", 0),
             retained=capsule is not None,
             tier=apex_state.get("tier", 1),

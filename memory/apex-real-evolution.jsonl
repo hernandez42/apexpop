@@ -1,3 +1,0 @@
-{"timestamp": "2026-05-12T06:44:50.301204", "before_ΔG": 0.7048, "after_ΔG": 0.7048, "bottleneck": "B_h", "fixes": ["skill 质量审计"], "stagnant": false, "delta": 0.0}
-{"timestamp": "2026-05-12T06:45:01.107638", "before_ΔG": 0.7048, "after_ΔG": 0.7048, "bottleneck": "B_h", "fixes": ["skill 质量审计"], "stagnant": true, "delta": 0.0}
-{"timestamp": "2026-05-12T06:46:22.561878", "before_ΔG": 0.8048, "after_ΔG": 0.8528, "bottleneck": "C_e", "fixes": ["补因果分析"], "stagnant": false, "delta": 0.048}
