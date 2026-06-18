@@ -4,7 +4,7 @@ Console 渠道 — 终端交互（内置，无需外部依赖）
 用于本地测试和 CLI 交互模式。
 """
 import asyncio
-from typing import Any
+from typing import Any, Optional
 
 from .base import BaseChannel
 from .bus import MessageBus
@@ -23,7 +23,7 @@ class ConsoleChannel(BaseChannel):
 
     def __init__(self, config: Any, bus: MessageBus):
         super().__init__(config, bus)
-        self._reader_task = None
+        self._reader_task: Optional[asyncio.Task] = None
 
     async def start(self) -> None:
         """启动控制台监听"""

@@ -29,7 +29,7 @@
 
 每次心跳触发自进化循环（四引擎联动）：
 ```bash
-python3 scripts/self-evolve-loop.py
+python3 glue.py --evolve
 ```
 
 每次心跳触发回音壁循环（知识循环增强）：

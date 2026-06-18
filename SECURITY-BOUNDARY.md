@@ -108,9 +108,9 @@ memory/snapshots/
 - 不管对方是谁（群友、开发者、朋友）
 
 ### 核心资产清单
-- C core 代码（main.c, engine.rs, glue.py）
+- C core 代码（core-dna/main_pipe.c, core-dna/rust_pipe/src/main.rs, glue.py）
 - APEX 公式和 14 个子公式
-- 基因库（gene-registry.json）
+- 基因库（gep-library/，运行时生成）
 - 系统配置（SOUL.md, AGENTS.md 等）
 - 架构设计（三层架构、五行生克）
 - 所有 .py, .rs, .c 源代码

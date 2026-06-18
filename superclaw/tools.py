@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 def tool(func: Callable) -> Callable:
     """标记函数为工具"""
-    func._is_tool = True
+    setattr(func, "_is_tool", True)
     return func
 
 
@@ -245,13 +245,13 @@ def _get_memory_store(workspace: Path):
     return _MEMORY_STORE_CACHE[key]
 
 
-def scan_skills(skills_dir: Path) -> List[Dict[str, str]]:
+def scan_skills(skills_dir: Path) -> List[Dict[str, Any]]:
     """扫描 skills 目录，返回所有 skill 信息
     兼容 skill 生态：任何 .md 文件都可以是 skill
 
     返回: [{"path": ..., "title": ..., "triggers": [...], "preview": ...}]
     """
-    skills = []
+    skills: List[Dict[str, Any]] = []
     if not skills_dir.exists():
         return skills
 

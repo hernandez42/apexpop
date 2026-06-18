@@ -69,7 +69,7 @@ class FeishuChannel(BaseChannel):
         self.app_id = self._get_config("app_id", "")
         self.app_secret = self._get_config("app_secret", "")
         self._lark = None
-        self._ws_client = None
+        self._ws_client: Any = None
         self._tenant_access_token = ""
 
     def _get_config(self, key: str, default: Any = "") -> Any:

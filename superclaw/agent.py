@@ -287,10 +287,10 @@ class Agent:
                 continue
 
             print()
-            result = self.run(user_input, session_key=session_key, verbose=False)
-            tools = ", ".join(set(result.tools_used)) if result.tools_used else "无"
-            print(f"🦖: {result.content}")
-            print(f"  [工具: {tools} | 迭代: {result.iterations} | 用时: {result.total_time_ms}ms]\n")
+            agent_result = self.run(user_input, session_key=session_key, verbose=False)
+            tools = ", ".join(set(agent_result.tools_used)) if agent_result.tools_used else "无"
+            print(f"🦖: {agent_result.content}")
+            print(f"  [工具: {tools} | 迭代: {agent_result.iterations} | 用时: {agent_result.total_time_ms}ms]\n")
 
 
 # 为 `from superclaw.agent import Agent` 时避免循环导入
