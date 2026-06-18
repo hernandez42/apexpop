@@ -68,6 +68,12 @@ try:
 except ImportError:  # pragma: no cover
     _CURIOSITY_AVAILABLE = False
 
+try:
+    from .experience_learner import ExperienceLearner, StrategyOutcome
+    _EXPERIENCE_LEARNER_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _EXPERIENCE_LEARNER_AVAILABLE = False
+
 
 # ============================================================
 # 信号提取器 — 对照 Evolver analyzer.js
@@ -216,11 +222,19 @@ class StrategyManager:
     }
 
     def __init__(self, strategy: str = "balanced",
-                 curiosity: Optional["CuriosityDrive"] = None):
+                 curiosity: Optional["CuriosityDrive"] = None,
+                 experience_learner: Optional["ExperienceLearner"] = None):
         if strategy not in VALID_STRATEGIES:
             strategy = "balanced"
         self.strategy = strategy
         self.curiosity = curiosity
+        self.experience_learner = experience_learner
+
+    def _current_ratios(self) -> Tuple[float, float]:
+        """获取当前策略比例（有经验学习时用调整后权重，否则用默认）"""
+        if self.experience_learner is not None:
+            return self.experience_learner.adjusted_weight(self.strategy)
+        return self.STRATEGY_RATIOS.get(self.strategy, (0.7, 0.3))
 
     def select_category(self, signals: List[Signal]) -> str:
         """根据策略和信号选择进化类别
@@ -231,10 +245,12 @@ class StrategyManager:
         - 如果 curiosity.should_explore(current_signals) → 提升 explore 概率
         - 用 curiosity.intrinsic_reward 调整 repair/optimize/innovate/explore 的权重
         - 无 curiosity 时走原逻辑（向后兼容）
+
+        经验学习影响（可选）：
+        - 有 experience_learner 时用调整后的 repair/innovate 比例
+        - 无 experience_learner 时用 STRATEGY_RATIOS 默认值（向后兼容）
         """
-        repair_ratio, innovate_ratio = self.STRATEGY_RATIOS.get(
-            self.strategy, (0.7, 0.3)
-        )
+        repair_ratio, innovate_ratio = self._current_ratios()
 
         # 统计信号类型
         error_count = sum(1 for s in signals if s.signal_type == "error")
@@ -321,17 +337,24 @@ class GEPEngine:
                  dynamic_loader: Optional[Any] = None,
                  evolution_validator: Optional[Any] = None,
                  project_root: Optional[Path] = None,
-                 curiosity: Optional["CuriosityDrive"] = None):
+                 curiosity: Optional["CuriosityDrive"] = None,
+                 experience_learner: Optional["ExperienceLearner"] = None):
         self.workspace = workspace or Path(__file__).parent.parent.resolve()
         self.memory = memory or MemoryStore(self.workspace)
         self.llm = llm or get_router()
-        self.strategy_mgr = StrategyManager(strategy, curiosity=curiosity)
+        self.strategy_mgr = StrategyManager(
+            strategy, curiosity=curiosity,
+            experience_learner=experience_learner,
+        )
         self.library = GeneLibrary(self.workspace / "gep-library")
         self.signal_extractor = SignalExtractor(self.memory, self.llm)
         self.cycle_count = 0
 
         # ---- 内在动机/好奇心（可选）----
         self.curiosity = curiosity
+
+        # ---- 经验学习（可选）----
+        self.experience_learner = experience_learner
 
         # ---- 自进化模块（可选，全部 None 时走原有逻辑）----
         self.capability_registry = capability_registry
@@ -455,6 +478,22 @@ class GEPEngine:
         # ---- Step 10: Return Monitor ----
         monitor = self._step_return_monitor()
         result["steps"]["10_monitor"] = monitor
+
+        # ---- 经验学习：记录策略执行结果（可选）----
+        if self.experience_learner is not None:
+            try:
+                outcome = StrategyOutcome(
+                    strategy=self.strategy_mgr.strategy,
+                    category=category,
+                    score=validation.get("score", 0.0),
+                    retained=capsule is not None,
+                    cycle=self.cycle_count,
+                    signal_count=len(signals),
+                )
+                self.experience_learner.record(outcome)
+                result["experience_recorded"] = True
+            except Exception:
+                result["experience_recorded"] = False
 
         result["status"] = "success" if validation.get("passed") else "failed"
         return result
@@ -1376,3 +1415,61 @@ class GEPEngine:
             "signals": len(signals),
             "evolution": evo_result,
         }
+
+    # ============================================================
+    # 经验驱动调整 — 分析历史 → 调整策略权重
+    # ============================================================
+
+    def run_experience_driven_adjustment(self) -> Dict[str, Any]:
+        """经验驱动调整：分析历史策略表现 → 调整 StrategyManager 权重
+
+        流程：
+        1. 用 ExperienceLearner.analyze_all() 分析所有策略的成功率/平均分/趋势
+        2. 用 ExperienceLearner.adjusted_weights() 计算调整后权重
+        3. 报告 best/worst 策略
+        4. 权重调整会自动影响下一次 run_cycle 的 select_category（通过 _current_ratios）
+
+        Returns:
+            包含 status/stats/adjusted_weights/best/worst/report 字段的字典
+        """
+        if self.experience_learner is None:
+            return {
+                "status": "skipped",
+                "reason": "experience_learner not configured",
+                "stats": {},
+                "adjusted_weights": {},
+            }
+
+        try:
+            stats_all = self.experience_learner.analyze_all()
+            adjusted = self.experience_learner.adjusted_weights()
+            report = self.experience_learner.report()
+            best = self.experience_learner.best_strategy()
+            worst = self.experience_learner.analyzer.worst_strategy()
+
+            return {
+                "status": "success",
+                "stats": {
+                    s: {
+                        "attempts": st.attempts,
+                        "success_rate": round(st.success_rate, 3),
+                        "avg_score": round(st.avg_score, 3),
+                        "recent_trend": round(st.recent_trend, 3),
+                    }
+                    for s, st in stats_all.items()
+                },
+                "adjusted_weights": {
+                    s: {"repair": r, "innovate": i}
+                    for s, (r, i) in adjusted.items()
+                },
+                "best_strategy": best,
+                "worst_strategy": worst,
+                "report": report,
+            }
+        except Exception as e:
+            return {
+                "status": "failed",
+                "reason": str(e),
+                "stats": {},
+                "adjusted_weights": {},
+            }
