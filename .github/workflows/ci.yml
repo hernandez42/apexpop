@@ -55,9 +55,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install gcc
-        run: sudo apt-get update && sudo apt-get install -y gcc
-
       - name: Compile C Core
         run: |
           cd core-dna
@@ -77,6 +74,11 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core-dna/rust_pipe
 
       - name: Compile Rust Engine
         run: |
