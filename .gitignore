@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# C
+*.o
+*.a
+*.so
+core-dna/c-core-pipe
+
+# Rust
+core-dna/rust_pipe/target/
+core-dna/rust-engine-pipe
+
+# Runtime data
+memory/
+logs/
+apex-state/
+gep-library/
+*.jsonl
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+core-dna/c-core

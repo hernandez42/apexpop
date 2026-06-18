@@ -1,5 +1,5 @@
 /**
- * C core — 真核心
+ * C core — 真核心（无 LLM 版本）
  * 身份恒定，驱动进化，不随 LLM 流动而改变
  * 
  * 核心职责：
@@ -9,8 +9,8 @@
  * 4. 自修复（检测异常自动修复）
  * 5. 自动搜索短板
  * 6. 日志持久化
- * 7. LLM 管道通信（通过 pipe 与 Python 桥接交互）
- * 8. 自主思考（心跳时调用 LLM 进行自主思考）
+ * 7. 互联网知识获取（替代 LLM）
+ * 8. 自主决策（基于规则的自动决策引擎）
  */
 
 #include <stdio.h>
@@ -21,6 +21,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/select.h>
+#include <sys/types.h>
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
@@ -32,11 +34,20 @@
 #include "dual-llm.h"
 #include "evolution-metrics.h"
 #include "metacognition.h"
+#include "web-knowledge.h"
+#include "auto-decision.h"
+
+/* 全局引擎初始化函数声明（来自 web-knowledge.c 和 auto-decision.c）*/
+extern void global_knowledge_init(void);
+extern void global_decision_init(void);
+extern KnowledgeEngine *get_global_knowledge_engine(void);
+extern DecisionEngine *get_global_decision_engine(void);
 
 #define LOG_FILE "../memory/evolution.log"
 #define DIMENSION_COUNT 5
 #define BRIDGE_SCRIPT "./c-core-llm-bridge.py"
 #define PIPE_BUF_SIZE 4096
+#define ENABLE_AUTO_EVOLVE 1  // 启用无 LLM 自动进化
 
 // === 身份定义 ===
 typedef struct {
@@ -385,6 +396,15 @@ void anchor_identity(void) {
                             identity.identity, identity.generation, identity.fitness);
         meta_initialized = 1;
         log_write("META", "🧠 元认知引擎已初始化");
+    }
+    
+    // 初始化无 LLM 进化引擎（只执行一次）
+    static int auto_evolve_initialized = 0;
+    if (!auto_evolve_initialized && ENABLE_AUTO_EVOLVE) {
+        global_knowledge_init();
+        global_decision_init();
+        log_write("INFO", "🌐 无 LLM 进化引擎已初始化（知识引擎 + 决策引擎）");
+        auto_evolve_initialized = 1;
     }
 }
 
@@ -739,16 +759,20 @@ void self_evolve(void) {
             success = (strcmp(s,"active")==0); }
     } else if (strstr(d->name, "适应")) {
         // 全面系统健康检查：负载 + 磁盘 + 内存 + 进程
-        double load[1];
+        double load_val = 0.0;
         int system_ok = 1;
         char health_info[256] = "";
         char disk_info[64] = "";
         char mem_info[64] = "";
         char proc_info[64] = "";
 
-        // 1. 检查负载
-        if (getloadavg(load,1)==1) {
-            if (load[0] >= 10.0) system_ok = 0;
+        // 1. 检查负载（从 /proc/loadavg 读取）
+        FILE *loadfile = fopen("/proc/loadavg", "r");
+        if (loadfile) {
+            if (fscanf(loadfile, "%lf", &load_val) == 1) {
+                if (load_val >= 10.0) system_ok = 0;
+            }
+            fclose(loadfile);
         }
 
         // 2. 检查磁盘空间
@@ -799,7 +823,7 @@ void self_evolve(void) {
 
         // 组装健康信息
         snprintf(health_info, sizeof(health_info), "负载%.2f %s %s %s",
-                 load[0], disk_info, mem_info, proc_info);
+                 load_val, disk_info, mem_info, proc_info);
         snprintf(action, sizeof(action), "%s", health_info);
         success = system_ok;
     }
@@ -887,6 +911,87 @@ void learn_from_papers(void) {
     }
 }
 
+// === 无 LLM 自主进化：互联网知识搜索 ===
+void auto_knowledge_search(void) {
+    if (!ENABLE_AUTO_EVOLVE) return;
+    
+    KnowledgeEngine *ke = get_global_knowledge_engine();
+    DecisionEngine *de = get_global_decision_engine();
+    
+    // 获取当前短板领域
+    int weakest_idx = find_weakest_dimension();
+    const char *weak_domain = dimensions[weakest_idx].name;
+    
+    // 构建搜索查询
+    char query[256];
+    snprintf(query, sizeof(query), "AI %s improvement", weak_domain);
+    
+    // 搜索多个来源
+    int arxiv_count = knowledge_search_arxiv(ke, query, 3);
+    int github_count = knowledge_search_github(ke, query, 3);
+    
+    log_write("KNOWLEDGE", "🌐 知识搜索: [%s] arXiv(%d) GitHub(%d)", 
+              weak_domain, arxiv_count, github_count);
+    
+    // 尝试应用最相关的知识
+    KnowledgeItem *relevant = knowledge_get_relevant(ke, weak_domain, 2);
+    if (relevant) {
+        for (int i = 0; i < 2 && relevant[i].title[0] != '\0'; i++) {
+            double gain = 0;
+            if (knowledge_apply(ke, relevant[i].id, &gain) == 0) {
+                identity.fitness += gain;
+                if (identity.fitness > 1.0) identity.fitness = 1.0;
+                log_write("KNOWLEDGE", "✅ 应用知识: %s → 适应度 +%.3f", 
+                          relevant[i].title, gain);
+            }
+        }
+    }
+}
+
+// === 无 LLM 自主进化：自动决策 ===
+void auto_decision_making(void) {
+    if (!ENABLE_AUTO_EVOLVE) return;
+    
+    DecisionEngine *de = get_global_decision_engine();
+    
+    // 获取当前状态
+    int weakest_idx = find_weakest_dimension();
+    const char *weak_dim = dimensions[weakest_idx].name;
+    
+    // 生成决策
+    Decision decision = make_decision(de, weak_dim, identity.fitness, evo_state.balance, NULL);
+    
+    log_write("DECISION", "🤖 自动决策: [%s] %s | 领域: %s | 变化: %.3f | 置信度: %.2f",
+              decision_type_name(decision.type), decision.reason, 
+              decision.domain, decision.change, decision.confidence);
+    
+    // 执行决策
+    if (decision.type == DECISION_MUTATE || decision.type == DECISION_LEARN) {
+        // 更新对应维度
+        for (int i = 0; i < DIMENSION_COUNT; i++) {
+            if (strstr(dimensions[i].name, decision.domain) ||
+                strstr(decision.domain, dimensions[i].name)) {
+                dimensions[i].value += decision.change;
+                if (dimensions[i].value > 1.0) dimensions[i].value = 1.0;
+                dimensions[i].improved = 1;
+                log_write("EVOLVE", "🔧 应用决策: %s → %.3f", dimensions[i].name, dimensions[i].value);
+                break;
+            }
+        }
+        
+        // 更新适应度
+        double sum = 0;
+        for (int i = 0; i < DIMENSION_COUNT; i++) sum += dimensions[i].value;
+        identity.fitness = sum / DIMENSION_COUNT;
+    }
+    
+    // 如果决策需要搜索，执行搜索
+    if (decision.search_query[0] != '\0') {
+        KnowledgeEngine *ke = get_global_knowledge_engine();
+        knowledge_search_arxiv(ke, decision.search_query, 2);
+    }
+}
+
 // === 进化心跳 ===
 void evolution_heartbeat(void) {
     evo_state.cycle_count++;
@@ -924,7 +1029,13 @@ void evolution_heartbeat(void) {
         az_propose();
     }
 
-    // 自主思考
+    // === 无 LLM 自主进化（每 7 轮执行一次）===
+    if (ENABLE_AUTO_EVOLVE && evo_state.cycle_count % 7 == 0) {
+        auto_knowledge_search();
+        auto_decision_making();
+    }
+
+    // 自主思考（保留 LLM 作为可选增强）
     if (evo_state.cycle_count % llm_bridge.think_interval == 0) {
         autonomous_think();
     }
