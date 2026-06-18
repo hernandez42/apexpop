@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  python-quality:
+    name: Python Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pyflakes
+        run: pip install pyflakes
+
+      - name: Run pyflakes
+        run: |
+          python3 -m pyflakes superclaw/*.py superclaw/channels/*.py glue.py verify*.py cli.py config.py
+          echo "pyflakes passed with 0 issues"
+
+  python-tests:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    needs: python-quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run core verification
+        run: python3 verify.py
+
+      - name: Run memory system verification
+        run: python3 verify_memory.py
+
+      - name: Run channels verification
+        run: python3 verify_channels.py
+
+      - name: Run GEP engine verification
+        run: python3 verify_gep.py
+
+  c-core:
+    name: C Core Compilation
+    runs-on: ubuntu-latest
+    needs: python-quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gcc
+        run: sudo apt-get update && sudo apt-get install -y gcc
+
+      - name: Compile C Core
+        run: |
+          cd core-dna
+          gcc -O2 -Wall -Wextra -std=c11 -D_POSIX_C_SOURCE=200809L -o c-core-pipe main_pipe.c -lm
+
+      - name: Test C Core pipe
+        run: |
+          cd core-dna
+          echo '{"cmd":"heartbeat"}' | ./c-core-pipe
+
+  rust-engine:
+    name: Rust Engine Compilation
+    runs-on: ubuntu-latest
+    needs: python-quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions-rust/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Compile Rust Engine
+        run: |
+          cd core-dna/rust_pipe
+          cargo build --release
+
+      - name: Test Rust Engine pipe
+        run: |
+          cd core-dna
+          cp rust_pipe/target/release/rust-engine-pipe .
+          echo '{"cmd":"status"}' | ./rust-engine-pipe

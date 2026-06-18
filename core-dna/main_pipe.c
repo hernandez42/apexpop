@@ -76,8 +76,7 @@ static SelfHealState heal_state = {
 
 // === 简易 JSON 工具 ===
 
-// 从 JSON 字符串中提取简单字段值
-// 如：{"cmd":"heartbeat"} → 提取 "heartbeat"
+// 从 JSON 提取字符串值："key":"value" 或 "key":value
 static char* json_get_string(const char* json, const char* key, char* buf, int bufsize) {
     char pattern[128];
     snprintf(pattern, sizeof(pattern), "\"%s\"", key);
@@ -97,24 +96,37 @@ static char* json_get_string(const char* json, const char* key, char* buf, int b
         buf[i] = '\0';
         return buf;
     }
-    
-    return NULL;
+    // 数字也作为字符串拷贝
+    int i = 0;
+    while (*pos && *pos != ',' && *pos != '}' && *pos != ' ' && i < bufsize - 1) {
+        buf[i++] = *pos++;
+    }
+    buf[i] = '\0';
+    return buf;
 }
 
-// 从 JSON 中提取整数值
+// 从 JSON 提取整数值
 static int json_get_int(const char* json, const char* key, int default_val) {
     char val[32];
     if (json_get_string(json, key, val, sizeof(val))) {
-        return atoi(val);
+        int parsed = atoi(val);
+        // atoi 失败返回 0，如果原意就是 0 也是对的
+        // 为区分"不存在"和"值为0"，我们先看是否匹配到
+        if (parsed != 0) return parsed;
+        // 检查输入是否真的是 "0"
+        if (val[0] == '0' && val[1] == '\0') return 0;
     }
     return default_val;
 }
 
-// 从 JSON 中提取浮点值
+// 从 JSON 提取浮点值
 static double json_get_float(const char* json, const char* key, double default_val) {
     char val[32];
     if (json_get_string(json, key, val, sizeof(val))) {
-        return atof(val);
+        double parsed = atof(val);
+        if (parsed != 0.0) return parsed;
+        // 检查是否是 "0" 或 "0.0"
+        if (val[0] == '0' && (val[1] == '\0' || val[1] == '.')) return 0.0;
     }
     return default_val;
 }
