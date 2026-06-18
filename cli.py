@@ -9,9 +9,13 @@ superclaw CLI 入口
   python3 -m superclaw --providers              列出可用 Provider
   python3 -m superclaw --config path.json       指定配置
   python3 -m superclaw --test                   运行内置测试
+  python3 -m superclaw --evolve                 运行一次进化循环
+  python3 -m superclaw --evolve --mode curious  好奇心探索
+  python3 -m superclaw --schedule --interval 60 启动定时调度（60秒一次）
 """
 import argparse
 import sys
+import time
 from pathlib import Path
 
 # 支持 `python3 cli.py` 或 `python3 -m superclaw`
@@ -34,6 +38,136 @@ def _print_header(cfg: SuperclawConfig) -> None:
     print("-" * 60)
 
 
+def _run_evolve(args, cfg: SuperclawConfig) -> int:
+    """运行进化循环"""
+    from superclaw.gep_engine import GEPEngine
+    from superclaw.memory import MemoryStore
+    from superclaw.curiosity import (
+        NoveltyScorer, BoredomTracker, CuriosityDrive,
+    )
+    from superclaw.experience_learner import ExperienceLearner
+    from superclaw.feedback_learner import FeedbackLearner
+
+    workspace = Path(cfg.workspace)
+
+    # 构建可选模块（全部启用，让进化能力最大化）
+    curiosity = CuriosityDrive(
+        NoveltyScorer(workspace / "apex-state" / "novelty.json"),
+        BoredomTracker(),
+    )
+    experience_learner = ExperienceLearner(workspace / "logs" / "experience.jsonl")
+    feedback_learner = FeedbackLearner(workspace / "logs" / "feedback.jsonl")
+
+    engine = GEPEngine(
+        memory=MemoryStore(workspace),
+        workspace=workspace,
+        strategy="balanced",
+        curiosity=curiosity,
+        experience_learner=experience_learner,
+        feedback_learner=feedback_learner,
+    )
+
+    mode = args.mode
+    print(f"\n🧬 进化模式: {mode}")
+    print("-" * 60)
+
+    if mode == "cycle":
+        result = engine.run_cycle()
+    elif mode == "self":
+        result = engine.run_self_evolution_cycle()
+    elif mode == "curious":
+        result = engine.run_curious_exploration()
+    elif mode == "experience":
+        result = engine.run_experience_driven_adjustment()
+    elif mode == "feedback":
+        result = engine.run_feedback_driven_evolution()
+    else:
+        print(f"  ✗ 未知模式: {mode}")
+        return 1
+
+    print(f"  状态: {result.get('status', 'unknown')}")
+    if "steps" in result:
+        steps = result["steps"]
+        if "2_extract_signals" in steps:
+            print(f"  信号: {steps['2_extract_signals']['count']} 个")
+        if "3_select_gene" in steps:
+            print(f"  类别: {steps['3_select_gene']['category']}")
+        if "6_validate" in steps:
+            print(f"  验证: score={steps['6_validate'].get('score', 0):.2f}")
+    if "gaps" in result:
+        print(f"  短板: {len(result['gaps'])} 个")
+    if "validated" in result:
+        print(f"  已验证: {len(result['validated'])} 个")
+    if "stats" in result:
+        stats = result["stats"]
+        if isinstance(stats, dict) and stats:
+            print(f"  统计: {stats}")
+
+    return 0
+
+
+def _run_schedule(args, cfg: SuperclawConfig) -> int:
+    """启动定时调度"""
+    from superclaw.gep_engine import GEPEngine
+    from superclaw.memory import MemoryStore
+    from superclaw.scheduler import (
+        EvolutionScheduler, MultiModeScheduler,
+        MODE_CYCLE, MODE_CURIOUS, MODE_FEEDBACK,
+    )
+    from superclaw.curiosity import (
+        NoveltyScorer, BoredomTracker, CuriosityDrive,
+    )
+    from superclaw.experience_learner import ExperienceLearner
+    from superclaw.feedback_learner import FeedbackLearner
+
+    workspace = Path(cfg.workspace)
+    curiosity = CuriosityDrive(
+        NoveltyScorer(workspace / "apex-state" / "novelty.json"),
+        BoredomTracker(),
+    )
+    experience_learner = ExperienceLearner(workspace / "logs" / "experience.jsonl")
+    feedback_learner = FeedbackLearner(workspace / "logs" / "feedback.jsonl")
+
+    engine = GEPEngine(
+        memory=MemoryStore(workspace),
+        workspace=workspace,
+        strategy="balanced",
+        curiosity=curiosity,
+        experience_learner=experience_learner,
+        feedback_learner=feedback_learner,
+    )
+
+    interval = args.interval
+    mode = args.mode
+
+    print("\n⏰ 定时调度启动")
+    print(f"  间隔: {interval} 秒")
+    print(f"  模式: {mode}")
+    print("  Ctrl+C 停止")
+    print("-" * 60)
+
+    if mode == "multi":
+        scheduler = MultiModeScheduler(
+            engine, interval=interval,
+            modes=[MODE_CYCLE, MODE_CURIOUS, MODE_FEEDBACK],
+        )
+    else:
+        scheduler = EvolutionScheduler(engine, interval=interval, mode=mode)
+
+    scheduler.start()
+
+    try:
+        while scheduler.is_running():
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n  停止调度...")
+        scheduler.stop()
+
+    stats = scheduler.stats()
+    print(f"\n  总运行: {stats['run_count']} 次")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="superclaw",
@@ -51,6 +185,18 @@ def main() -> int:
     parser.add_argument("--verbose", "-v", action="store_true", help="显示详细信息")
     parser.add_argument("--test", action="store_true", help="运行内置测试")
     parser.add_argument("--skill", help="加载一个 .md skill 文件")
+
+    # ---- 进化相关参数 ----
+    parser.add_argument("--evolve", action="store_true",
+                       help="运行一次进化循环")
+    parser.add_argument("--schedule", action="store_true",
+                       help="启动定时调度")
+    parser.add_argument("--mode", default="cycle",
+                       choices=["cycle", "self", "curious", "experience",
+                                "feedback", "multi"],
+                       help="进化模式（默认 cycle）")
+    parser.add_argument("--interval", type=int, default=3600,
+                       help="调度间隔秒数（默认 3600）")
 
     args = parser.parse_args()
 
@@ -83,6 +229,14 @@ def main() -> int:
             cfg.llm.api_key = os.environ[env_key]
     if args.model:
         cfg.llm.model = args.model
+
+    # 进化模式
+    if args.evolve:
+        return _run_evolve(args, cfg)
+
+    # 调度模式
+    if args.schedule:
+        return _run_schedule(args, cfg)
 
     _print_header(cfg)
 
