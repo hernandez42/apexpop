@@ -27,6 +27,28 @@ from .tools import ToolRegistry
 _IDENT_RE = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
 
 
+def _parse_scalar(val: str) -> Any:
+    """把 frontmatter 标量字符串解析成 Python 值（bool/int/float/str）"""
+    if val.lower() in ("true", "yes"):
+        return True
+    if val.lower() in ("false", "no"):
+        return False
+    if val.lower() in ("null", "none", "~"):
+        return None
+    # 去掉引号
+    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+        return val[1:-1]
+    try:
+        return int(val)
+    except ValueError:
+        pass
+    try:
+        return float(val)
+    except ValueError:
+        pass
+    return val
+
+
 def _is_valid_identifier(name: str) -> bool:
     """校验是否是合法 Python 标识符（模块名/函数名/工具名）"""
     return isinstance(name, str) and bool(_IDENT_RE.match(name))
@@ -578,17 +600,56 @@ class EnhancedSkillLoader:
         frontmatter_text = "\n".join(lines[1:end_idx])
         body = "\n".join(lines[end_idx + 1:]).strip()
 
-        try:
-            import yaml
-            data = yaml.safe_load(frontmatter_text)
-            if data is None:
-                return {}, body
-            if not isinstance(data, dict):
-                return {}, body
-            return data, body
-        except Exception:
-            # YAML 解析失败
-            return {}, body
+        # 用 stdlib 解析简单 frontmatter（key: value + 列表），不依赖 pyyaml
+        data = self._parse_simple_frontmatter(frontmatter_text)
+        return data, body
+
+    @staticmethod
+    def _parse_simple_frontmatter(text: str) -> Dict[str, Any]:
+        """解析简单 YAML frontmatter（key: value 和嵌套列表），不依赖 pyyaml"""
+        result: Dict[str, Any] = {}
+        current_key: Optional[str] = None
+        current_list: Optional[List[Any]] = None
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            # 检测未闭合引号（格式错误）
+            if stripped.count('"') % 2 != 0 or stripped.count("'") % 2 != 0:
+                return {}
+            # 嵌套列表项（以 - 开头）
+            if stripped.startswith("- ") and current_key is not None:
+                item_text = stripped[2:].strip()
+                if current_list is None:
+                    current_list = []
+                # 尝试解析 key: value 形式的列表项
+                if ":" in item_text:
+                    parts = item_text.split(":", 1)
+                    item_dict = {parts[0].strip(): _parse_scalar(parts[1].strip())}
+                    current_list.append(item_dict)
+                else:
+                    current_list.append(_parse_scalar(item_text))
+                continue
+            # key: value
+            if ":" in stripped:
+                if current_list is not None and current_key is not None:
+                    result[current_key] = current_list
+                    current_list = None
+                parts = stripped.split(":", 1)
+                key = parts[0].strip()
+                val = parts[1].strip()
+                if val == "":
+                    # 可能是列表开头
+                    current_key = key
+                    current_list = []
+                else:
+                    result[key] = _parse_scalar(val)
+                    current_key = key
+                    current_list = None
+        # 收尾未保存的列表
+        if current_list is not None and current_key is not None:
+            result[current_key] = current_list
+        return result
 
     def _inject_prompt(self, skill_path: Path, content: str) -> bool:
         """走原 prompt 注入逻辑（普通 skill md）"""
