@@ -59,6 +59,15 @@ try:
 except ImportError:  # pragma: no cover
     _EVOLUTION_VALIDATOR_AVAILABLE = False
 
+try:
+    from .curiosity import (
+        CuriosityDrive,
+        CuriosityDrivenExplorer,
+    )
+    _CURIOSITY_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _CURIOSITY_AVAILABLE = False
+
 
 # ============================================================
 # 信号提取器 — 对照 Evolver analyzer.js
@@ -206,15 +215,22 @@ class StrategyManager:
         "auto":            (0.7, 0.3),  # auto 默认 balanced
     }
 
-    def __init__(self, strategy: str = "balanced"):
+    def __init__(self, strategy: str = "balanced",
+                 curiosity: Optional["CuriosityDrive"] = None):
         if strategy not in VALID_STRATEGIES:
             strategy = "balanced"
         self.strategy = strategy
+        self.curiosity = curiosity
 
     def select_category(self, signals: List[Signal]) -> str:
         """根据策略和信号选择进化类别
 
         Returns: repair/optimize/innovate/explore
+
+        好奇心影响（可选）：
+        - 如果 curiosity.should_explore(current_signals) → 提升 explore 概率
+        - 用 curiosity.intrinsic_reward 调整 repair/optimize/innovate/explore 的权重
+        - 无 curiosity 时走原逻辑（向后兼容）
         """
         repair_ratio, innovate_ratio = self.STRATEGY_RATIOS.get(
             self.strategy, (0.7, 0.3)
@@ -232,6 +248,21 @@ class StrategyManager:
         if self.strategy == "repair-only":
             return "repair"
 
+        # ---- 好奇心影响（可选）----
+        curiosity_explore = False
+        if self.curiosity is not None:
+            signal_patterns = [s.pattern for s in signals]
+            if self.curiosity.should_explore(signal_patterns):
+                # 用 intrinsic_reward 调整权重：reward 越高 → repair_ratio 越低
+                if signal_patterns:
+                    top_reward = max(
+                        self.curiosity.intrinsic_reward(p) for p in signal_patterns
+                    )
+                else:
+                    top_reward = 0.5
+                repair_ratio = repair_ratio * (1.0 - min(top_reward, 1.0) * 0.5)
+                curiosity_explore = True
+
         if r < repair_ratio:
             # 修复类
             if error_count > 0:
@@ -243,6 +274,9 @@ class StrategyManager:
         else:
             # 创新类
             if feature_count > 0:
+                # 好奇心探索时优先 explore 而非 innovate
+                if curiosity_explore:
+                    return "explore"
                 return "innovate"
             else:
                 return "explore"
@@ -286,14 +320,18 @@ class GEPEngine:
                  sandbox_executor: Optional[Any] = None,
                  dynamic_loader: Optional[Any] = None,
                  evolution_validator: Optional[Any] = None,
-                 project_root: Optional[Path] = None):
+                 project_root: Optional[Path] = None,
+                 curiosity: Optional["CuriosityDrive"] = None):
         self.workspace = workspace or Path(__file__).parent.parent.resolve()
         self.memory = memory or MemoryStore(self.workspace)
         self.llm = llm or get_router()
-        self.strategy_mgr = StrategyManager(strategy)
+        self.strategy_mgr = StrategyManager(strategy, curiosity=curiosity)
         self.library = GeneLibrary(self.workspace / "gep-library")
         self.signal_extractor = SignalExtractor(self.memory, self.llm)
         self.cycle_count = 0
+
+        # ---- 内在动机/好奇心（可选）----
+        self.curiosity = curiosity
 
         # ---- 自进化模块（可选，全部 None 时走原有逻辑）----
         self.capability_registry = capability_registry
@@ -333,6 +371,23 @@ class GEPEngine:
 
         # ---- Step 2: Extract Signals ----
         signals = self._step_extract_signals()
+
+        # ---- 好奇心注入（可选）：检查是否该主动探索 ----
+        if self.curiosity is not None:
+            result["curiosity_active"] = True
+            if self.curiosity.should_explore([s.pattern for s in signals]):
+                # insert 到开头，确保 curiosity 信号在 signals[:5] 截断后仍可见
+                signals.insert(0, Signal(
+                    signal_type="curiosity",
+                    source="curiosity:drive",
+                    severity="info",
+                    pattern="好奇心驱动探索未知领域",
+                    context="intrinsic motivation",
+                ))
+                result["curiosity_exploring"] = True
+            else:
+                result["curiosity_exploring"] = False
+
         result["steps"]["2_extract_signals"] = {
             "count": len(signals),
             "signals": [s.__dict__ for s in signals[:5]],
@@ -1251,3 +1306,73 @@ class GEPEngine:
             return self.code_generator.generate(spec)
         except Exception:
             return None
+
+    # ============================================================
+    # 好奇心驱动探索 — 主动发现探索目标并转成 Signal 处理
+    # ============================================================
+
+    def run_curious_exploration(self) -> Dict[str, Any]:
+        """好奇心驱动探索：发现探索目标 → 转成 Signal → 调自进化循环处理
+
+        流程：
+        1. 用 CuriosityDrivenExplorer 发现探索目标（分析能力清单 vs 可能领域）
+        2. 把探索目标转成 GEP engine 能理解的 Signal
+        3. 记录探索过的领域到 NoveltyScorer
+        4. 调 run_self_evolution_cycle 处理（用目标领域作为任务需求）
+
+        Returns:
+            包含 status/targets/reasons/signals/evolution 字段的字典
+        """
+        if self.curiosity is None:
+            return {
+                "status": "skipped",
+                "reason": "curiosity not configured",
+                "targets": [],
+                "signals": 0,
+            }
+
+        if self.capability_registry is None:
+            return {
+                "status": "skipped",
+                "reason": "capability_registry not configured",
+                "targets": [],
+                "signals": 0,
+            }
+
+        explorer = CuriosityDrivenExplorer(
+            self.curiosity, self.capability_registry, self.llm
+        )
+
+        current_state: Dict[str, Any] = {
+            "known_domains": [c.name for c in self.capability_registry.list_all()],
+        }
+        targets = explorer.discover_targets(current_state)
+
+        if not targets:
+            return {
+                "status": "no_targets",
+                "targets": [],
+                "reasons": [],
+                "signals": 0,
+            }
+
+        # 转成 Signal
+        signals = [explorer.generate_curiosity_signal(t) for t in targets]
+
+        # 记录探索过的领域到 NoveltyScorer（持久化新颖度衰减）
+        for t in targets:
+            self.curiosity.novelty_scorer.record(t.target_domain, "domain")
+
+        # 调 run_self_evolution_cycle 处理（用目标领域作为任务需求）
+        task_requirements = [t.target_domain for t in targets]
+        evo_result = self.run_self_evolution_cycle(
+            task_requirements=task_requirements
+        )
+
+        return {
+            "status": evo_result.get("status", "unknown"),
+            "targets": [t.target_domain for t in targets],
+            "reasons": [t.reason for t in targets],
+            "signals": len(signals),
+            "evolution": evo_result,
+        }
