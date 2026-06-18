@@ -195,7 +195,7 @@ class LLMProvider:
 
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310 - url 由管理员配置/HTTPS 默认值，已设 timeout
                 data = json.loads(resp.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"]
         except Exception as e:

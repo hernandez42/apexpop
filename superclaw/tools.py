@@ -2,10 +2,12 @@
 superclaw 工具系统
 类似 nanobot 的 ToolRegistry — 简单但真实
 """
+import shlex
 import subprocess
 import time
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from urllib.parse import urlparse
 
 
 def tool(func: Callable) -> Callable:
@@ -169,10 +171,19 @@ def build_default_tools(cfg_workspace: str,
     # Shell 命令工具
     if shell:
         def _shell(cmd: str) -> str:
-            """执行 shell 命令，返回输出"""
+            """执行 shell 命令，返回输出
+
+            安全说明：使用 shlex.split + shell=False 避免 shell 注入，
+            不支持管道/重定向等 shell 元字符（agent 工具不应暴露完整 shell）。
+            """
             try:
+                # shlex.split 将命令字符串解析为参数列表，配合 shell=False
+                # 避免 shell 元字符注入风险
+                argv = shlex.split(cmd)
+                if not argv:
+                    return "[错误] 空命令"
                 result = subprocess.run(
-                    cmd, shell=True, capture_output=True,
+                    argv, shell=False, capture_output=True,
                     text=True, timeout=30, cwd=str(tools._workspace)
                 )
                 output = ""
@@ -185,6 +196,8 @@ def build_default_tools(cfg_workspace: str,
                 return f"[exit={result.returncode}]\n{output.strip()[:5000]}"
             except subprocess.TimeoutExpired:
                 return "[错误] 命令执行超时(30s)"
+            except ValueError as e:
+                return f"[命令解析错误] {e}"
             except Exception as e:
                 return f"[执行错误] {e}"
 
@@ -196,9 +209,13 @@ def build_default_tools(cfg_workspace: str,
     if web:
         def _web_get(url: str) -> str:
             try:
+                # 校验 URL scheme，仅允许 http/https，防止 file:// 等读取本地文件
+                parsed = urlparse(url)
+                if parsed.scheme not in ("http", "https"):
+                    return f"[安全错误] 仅允许 http/https URL，拒绝 scheme={parsed.scheme!r}"
                 from urllib import request as _r
                 req = _r.Request(url, headers={"User-Agent": "superclaw/2.0"})
-                with _r.urlopen(req, timeout=15) as resp:
+                with _r.urlopen(req, timeout=15) as resp:  # nosec B310 - URL scheme 已校验为 http/https
                     data = resp.read().decode("utf-8", errors="ignore")
                 return data[:5000]
             except Exception as e:

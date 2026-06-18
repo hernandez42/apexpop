@@ -289,7 +289,7 @@ class FeishuChannel(BaseChannel):
                 method="POST"
             )
 
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=10) as resp:  # nosec B310 - URL 由 lark_oapi 常量域名+固定路径拼成，已设 timeout
                 data = json.loads(resp.read().decode("utf-8"))
 
             if data.get("code") == 0:

@@ -22,3 +22,10 @@ def tmp_workspace(tmp_path, monkeypatch):
     yield tmp_path
     # 恢复原 cwd（monkeypatch 会自动恢复 chdir，这里显式恢复以兼容老版本）
     os.chdir(original_cwd)
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "integration: requires real API credentials, skipped by default",
+    )

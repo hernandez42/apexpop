@@ -166,7 +166,7 @@ def _run_tests() -> int:
     try:
         from superclaw.tools import build_default_tools
         tools = build_default_tools(str(PROJECT_ROOT),
-                                    shell=True, file_tools=True, web=False, think=True)
+                                    shell=True, file_tools=True, web=False, think=True)  # nosec B604 - 传给 build_default_tools 的布尔开关，非 subprocess 调用
         assert "think" in tools.names
         assert "file_read" in tools.names
         assert "shell" in tools.names

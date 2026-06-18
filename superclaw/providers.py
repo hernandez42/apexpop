@@ -88,7 +88,7 @@ class OpenAICompatibleProvider(BaseProvider):
 
         req = _ureq.Request(url, data=payload, headers=headers, method="POST")
         try:
-            with _ureq.urlopen(req, timeout=self.cfg.timeout) as resp:
+            with _ureq.urlopen(req, timeout=self.cfg.timeout) as resp:  # nosec B310 - url 为管理员配置/HTTPS 默认值，已设 timeout
                 data = json.loads(resp.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"]
         except _uerr.URLError as e:
@@ -121,7 +121,7 @@ class OllamaProvider(BaseProvider):
 
         req = _ureq.Request(url, data=payload, headers=headers, method="POST")
         try:
-            with _ureq.urlopen(req, timeout=self.cfg.timeout) as resp:
+            with _ureq.urlopen(req, timeout=self.cfg.timeout) as resp:  # nosec B310 - url 为管理员配置(默认 localhost Ollama)，已设 timeout
                 data = json.loads(resp.read().decode("utf-8"))
             return data.get("message", {}).get("content", "")
         except ConnectionRefusedError:

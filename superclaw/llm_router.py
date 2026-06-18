@@ -156,7 +156,7 @@ class LLMRouter:
         try:
             req = _ureq.Request("http://localhost:11434/api/tags",
                                 headers={"User-Agent": "superclaw"})
-            with _ureq.urlopen(req, timeout=2) as resp:
+            with _ureq.urlopen(req, timeout=2) as resp:  # nosec B310 - URL 为硬编码 localhost，已设 timeout
                 return resp.status == 200
         except Exception:
             return False
@@ -310,7 +310,7 @@ class LLMRouter:
                 headers=headers, method="POST",
             )
 
-            with _ureq.urlopen(req, timeout=pconfig.timeout) as resp:
+            with _ureq.urlopen(req, timeout=pconfig.timeout) as resp:  # nosec B310 - base_url 由管理员配置，已设 timeout
                 data = json.loads(resp.read().decode("utf-8"))
 
             content = data.get("choices", [{}])[0] \

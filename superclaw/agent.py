@@ -86,7 +86,7 @@ class Agent:
         self.provider = provider or get_provider(self.cfg.llm)
         self.tools = tools or build_default_tools(
             self.cfg.workspace,
-            shell=self.cfg.tools.shell,
+            shell=self.cfg.tools.shell,  # nosec B604 - 传给 build_default_tools 的布尔开关，非 subprocess 调用
             file_tools=self.cfg.tools.file,
             web=self.cfg.tools.web,
             think=self.cfg.tools.think,
