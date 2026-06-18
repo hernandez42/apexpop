@@ -74,6 +74,12 @@ try:
 except ImportError:  # pragma: no cover
     _EXPERIENCE_LEARNER_AVAILABLE = False
 
+try:
+    from .feedback_learner import FeedbackLearner
+    _FEEDBACK_LEARNER_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _FEEDBACK_LEARNER_AVAILABLE = False
+
 
 # ============================================================
 # 信号提取器 — 对照 Evolver analyzer.js
@@ -85,9 +91,11 @@ class SignalExtractor:
     对照 Evolver src/gep/analyzer.js 的 analyzeFailures()
     """
 
-    def __init__(self, memory: MemoryStore, llm: Optional[LLMRouter] = None):
+    def __init__(self, memory: MemoryStore, llm: Optional[LLMRouter] = None,
+                 feedback_learner: Optional["FeedbackLearner"] = None):
         self.memory = memory
         self.llm = llm or get_router()
+        self.feedback_learner = feedback_learner
 
     def scan(self) -> List[Signal]:
         """扫描记忆系统，提取进化信号"""
@@ -136,7 +144,16 @@ class SignalExtractor:
                 context=f"总循环: {status.get('total_cycles', 0)}",
             ))
 
-        # 4. 用 LLM 深度分析（如果可用）
+        # 4. 从用户反馈提取信号（可选）
+        if self.feedback_learner is not None:
+            try:
+                feedback_signals = self.feedback_learner.to_signals(limit=5)
+                # 反馈信号优先级高，插入到前面
+                signals = feedback_signals + signals
+            except Exception:
+                pass  # 反馈提取失败不阻断主流程
+
+        # 5. 用 LLM 深度分析（如果可用）
         if self.llm and signals:
             llm_signal = self._llm_extract_signals(signals)
             if llm_signal:
@@ -338,7 +355,8 @@ class GEPEngine:
                  evolution_validator: Optional[Any] = None,
                  project_root: Optional[Path] = None,
                  curiosity: Optional["CuriosityDrive"] = None,
-                 experience_learner: Optional["ExperienceLearner"] = None):
+                 experience_learner: Optional["ExperienceLearner"] = None,
+                 feedback_learner: Optional["FeedbackLearner"] = None):
         self.workspace = workspace or Path(__file__).parent.parent.resolve()
         self.memory = memory or MemoryStore(self.workspace)
         self.llm = llm or get_router()
@@ -347,7 +365,10 @@ class GEPEngine:
             experience_learner=experience_learner,
         )
         self.library = GeneLibrary(self.workspace / "gep-library")
-        self.signal_extractor = SignalExtractor(self.memory, self.llm)
+        self.feedback_learner = feedback_learner
+        self.signal_extractor = SignalExtractor(
+            self.memory, self.llm, feedback_learner=feedback_learner,
+        )
         self.cycle_count = 0
 
         # ---- 内在动机/好奇心（可选）----
@@ -1472,4 +1493,67 @@ class GEPEngine:
                 "reason": str(e),
                 "stats": {},
                 "adjusted_weights": {},
+            }
+
+    # ============================================================
+    # 反馈驱动进化 — 从用户反馈提取信号 → 驱动进化循环
+    # ============================================================
+
+    def run_feedback_driven_evolution(self) -> Dict[str, Any]:
+        """反馈驱动进化：分析用户反馈 → 提取信号 → 驱动进化循环
+
+        流程：
+        1. 用 FeedbackLearner.analyze() 统计反馈
+        2. 用 FeedbackLearner.to_signals() 把反馈转成进化信号
+        3. 如果有 critical 信号（bug），优先调 run_cycle 处理
+        4. 报告反馈统计和处理的信号数
+
+        Returns:
+            包含 status/stats/signals_extracted/cycle_run 字段的字典
+        """
+        if self.feedback_learner is None:
+            return {
+                "status": "skipped",
+                "reason": "feedback_learner not configured",
+                "stats": {},
+                "signals_extracted": 0,
+            }
+
+        try:
+            stats = self.feedback_learner.analyze()
+            signals = self.feedback_learner.to_signals(limit=10)
+            critical_signals = self.feedback_learner.critical_signals(limit=3)
+
+            result: Dict[str, Any] = {
+                "status": "success",
+                "stats": {
+                    "total": stats.total,
+                    "positive": stats.positive,
+                    "negative": stats.negative,
+                    "suggestion": stats.suggestion,
+                    "bug": stats.bug,
+                    "avg_sentiment": stats.avg_sentiment,
+                    "satisfaction_rate": round(
+                        self.feedback_learner.analyzer.satisfaction_rate(), 3
+                    ),
+                },
+                "signals_extracted": len(signals),
+                "critical_signals": len(critical_signals),
+            }
+
+            # 有 critical 信号（bug）→ 驱动一次进化循环处理
+            if critical_signals:
+                cycle_result = self.run_cycle()
+                result["cycle_run"] = True
+                result["cycle_status"] = cycle_result.get("status")
+            else:
+                result["cycle_run"] = False
+
+            return result
+        except Exception as e:
+            return {
+                "status": "failed",
+                "reason": str(e),
+                "stats": {},
+                "signals_extracted": 0,
             }

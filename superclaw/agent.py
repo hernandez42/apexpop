@@ -14,6 +14,12 @@ from .providers import BaseProvider, get_provider, SYSTEM_PROMPT
 from .session import SessionManager
 from .tools import ToolRegistry, build_default_tools, scan_skills
 
+try:
+    from .feedback_learner import FeedbackLearner
+    _FEEDBACK_LEARNER_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _FEEDBACK_LEARNER_AVAILABLE = False
+
 
 @dataclass
 class AgentResult:
@@ -81,6 +87,7 @@ class Agent:
         provider: Optional[BaseProvider] = None,
         tools: Optional[ToolRegistry] = None,
         sessions: Optional[SessionManager] = None,
+        feedback_learner: Optional["FeedbackLearner"] = None,
     ):
         self.cfg = cfg or load_config()
         self.provider = provider or get_provider(self.cfg.llm)
@@ -98,6 +105,9 @@ class Agent:
         self.system_prompt = SYSTEM_PROMPT
         self.max_tool_iterations = self.cfg.tools.max_tool_iterations
         self.loaded_skills: List[str] = []
+
+        # ---- 用户反馈学习（可选）----
+        self.feedback_learner = feedback_learner
 
         # 自动扫描并加载 skills 目录
         self._autoload_skills()
@@ -155,6 +165,16 @@ class Agent:
 
         if not user_input.strip():
             return AgentResult(content="你说什么？")
+
+        # ---- 用户反馈采集（可选）----
+        # 检测用户消息是否包含反馈，是则记录到 FeedbackStore
+        if self.feedback_learner is not None:
+            try:
+                self.feedback_learner.detect_and_record(
+                    user_input, session_id=session_key,
+                )
+            except Exception:
+                pass  # 反馈采集失败不阻断主流程
 
         # 获取会话
         session = self.sessions.get(session_key)
