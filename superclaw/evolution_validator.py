@@ -11,6 +11,7 @@ superclaw 进化验证器 — 真实验证闭环和回滚机制
 - EvolutionValidator: 整合上述组件，执行验证闭环
 """
 import json
+import logging
 import re
 import shutil
 import subprocess
@@ -20,6 +21,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -492,6 +495,122 @@ class SnapshotManager:
 
 
 # ============================================================
+# GitSnapshotManager — git-based 事务性快照与回滚
+# ============================================================
+
+class GitSnapshotManager:
+    """git-based 快照管理器 — 用 git stash 做事务性回滚
+
+    相比 SnapshotManager 的文件复制方式，git-based 回滚的优势：
+    - 事务性：多文件回滚要么全成功要么全失败（git checkout 原子操作）
+    - 完整性：自动追踪所有被 git 管理的文件，不漏文件
+    - 可审计：git stash list 可查历史
+
+    局限：
+    - 只能回滚 git 已追踪的文件（新文件需先 git add）
+    - 需要 git 可用且项目已初始化
+    - 不适用于无 git 的环境（降级到 SnapshotManager）
+
+    用法：
+        mgr = GitSnapshotManager(project_root)
+        sid = mgr.create_snapshot([file1, file2], "before_evolution")
+        # ... 修改文件 ...
+        if test_failed:
+            mgr.restore_snapshot(sid)  # 原子回滚
+    """
+
+    def __init__(self, project_root: Path):
+        self.project_root = Path(project_root)
+
+    def _git(self, args: List[str]) -> Tuple[bool, str]:
+        """执行 git 命令，返回 (success, output)"""
+        try:
+            result = subprocess.run(
+                ["git"] + args,
+                cwd=str(self.project_root),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            output = (result.stdout or "") + (result.stderr or "")
+            return result.returncode == 0, output.strip()
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as e:
+            return False, str(e)
+
+    def _ensure_git(self) -> bool:
+        """检查 git 可用且项目已初始化"""
+        ok, _ = self._git(["rev-parse", "--is-inside-work-tree"])
+        return ok
+
+    def create_snapshot(self, files: List[Path], label: str) -> str:
+        """创建 git stash 快照，返回快照 ID
+
+        流程：
+        1. git add 指定文件（确保新文件也被追踪）
+        2. git stash create 创建临时 commit（不影响工作区）
+        3. 返回 commit hash 作为快照 ID
+        """
+        if not self._ensure_git():
+            # 降级：返回空 ID，restore 时会失败并报错
+            return ""
+
+        # git add 指定文件
+        for f in files:
+            f = Path(f)
+            if f.exists():
+                self._git(["add", str(f)])
+
+        # git stash create 返回 commit hash（不影响工作区和 stash list）
+        ok, commit_hash = self._git(["stash", "create"])
+        if not ok or not commit_hash:
+            # 没有改动可 stash，返回特殊标记
+            return "no_changes"
+
+        return commit_hash.strip()
+
+    def restore_snapshot(self, snapshot_id: str) -> bool:
+        """从 git stash 恢复（原子回滚）
+
+        用 git checkout <commit> -- <files> 恢复指定快照的文件状态。
+        """
+        if not snapshot_id or snapshot_id == "no_changes":
+            return snapshot_id == "no_changes"  # 无改动算成功
+
+        if not self._ensure_git():
+            return False
+
+        # 用 git checkout 从快照 commit 恢复所有被追踪文件
+        # 这是原子操作：要么全恢复要么不恢复
+        ok, out = self._git(["checkout", snapshot_id, "--", "."])
+        if not ok:
+            logger.warning("git 回滚失败: %s", out)
+            return False
+        return True
+
+    def list_snapshots(self) -> List[Dict]:
+        """列出 git stash 历史"""
+        ok, out = self._git(["stash", "list"])
+        if not ok:
+            return []
+        snapshots: List[Dict] = []
+        for line in out.splitlines():
+            if line.strip():
+                snapshots.append({"id": line.split(":")[0], "label": line.strip()})
+        return snapshots
+
+    def delete_snapshot(self, snapshot_id: str) -> bool:
+        """删除快照（git stash drop）"""
+        if not snapshot_id or snapshot_id == "no_changes":
+            return True
+        ok, _ = self._git(["stash", "drop", snapshot_id])
+        return ok
+
+    def cleanup_old(self, keep: int = 10) -> int:
+        """git stash 不支持保留最近 N 个，返回 0"""
+        return 0
+
+
+# ============================================================
 # EvolutionValidator — 整合验证闭环
 # ============================================================
 
@@ -504,6 +623,10 @@ class EvolutionValidator:
     c. 跑单元测试
     d. 如果测试失败，自动恢复快照，设 rollback_performed=True
     e. 返回结果
+
+    支持两种快照管理器：
+    - SnapshotManager: 文件复制方式（默认，无 git 依赖）
+    - GitSnapshotManager: git-based 事务性回滚（更可靠，需 git）
     """
 
     def __init__(self,

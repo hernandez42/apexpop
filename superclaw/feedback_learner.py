@@ -103,16 +103,79 @@ _POSITIVE_KEYWORDS = [
     "好的", "对了", "正确", "有用", "感谢", "太好了",
 ]
 
+# 否定前缀 — 出现在关键词前 N 字符内表示否定该关键词
+# 例如 "not a bug"、"不是 bug"、"没有问题"、"不希望"
+# 英文否定词需要前后看空格/词边界，中文直接前缀匹配
+_NEGATION_WORDS_EN = ["not", "no", "without", "isn't", "wasn't",
+                      "aren't", "weren't", "don't", "doesn't",
+                      "didn't", "won't", "can't", "cannot", "never"]
+# 中文否定词（直接前缀匹配，不需要空格）
+_NEGATION_WORDS_ZH = ["不", "没", "无", "非", "别", "勿", "未"]
+# 否定窗口：关键词前多少字符内检测否定词
+_NEGATION_WINDOW = 12
+
+
+def _is_negated(message_lower: str, kw_lower: str, kw_pos: int) -> bool:
+    """检测关键词是否被否定
+
+    在关键词前 _NEGATION_WINDOW 字符内查找否定词。
+    英文否定词需词边界，中文直接子串匹配。
+
+    Args:
+        message_lower: 已小写的完整消息
+        kw_lower: 已小写的关键词
+        kw_pos: 关键词在消息中的起始位置
+
+    Returns:
+        True 如果关键词被否定
+    """
+    window_start = max(0, kw_pos - _NEGATION_WINDOW)
+    window = message_lower[window_start:kw_pos]
+    # 中文否定词直接子串匹配
+    for neg in _NEGATION_WORDS_ZH:
+        if neg in window:
+            return True
+    # 英文否定词需词边界（前后是空格或非字母）
+    for neg in _NEGATION_WORDS_EN:
+        idx = window.rfind(neg)
+        if idx >= 0:
+            # 检查否定词后是否紧跟非字母字符（词边界）
+            after_idx = idx + len(neg)
+            if after_idx >= len(window) or not window[after_idx].isalpha():
+                return True
+    return False
+
+
+def _find_keyword(message_lower: str, keywords: List[str]) -> Optional[tuple]:
+    """查找消息中第一个未被否定的关键词
+
+    Returns:
+        (keyword, position) 或 None
+    """
+    for kw in keywords:
+        pos = message_lower.find(kw)
+        while pos >= 0:
+            if not _is_negated(message_lower, kw, pos):
+                return (kw, pos)
+            # 被否定，找下一个出现位置
+            pos = message_lower.find(kw, pos + 1)
+    return None
+
 
 class FeedbackDetector:
     """从用户消息中自动检测反馈类型和情感
 
     检测规则（按优先级）：
-    1. 包含 bug 关键词 → bug 类型，sentiment=-0.8
-    2. 包含 negative 关键词 → negative 类型，sentiment=-0.6
-    3. 包含 suggestion 关键词 → suggestion 类型，sentiment=0.0
-    4. 包含 positive 关键词 → positive 类型，sentiment=+0.8
-    5. 都不匹配 → None（不是反馈）
+    1. 包含未被否定的 bug 关键词 → bug 类型，sentiment=-0.8
+    2. 包含未被否定的 negative 关键词 → negative 类型，sentiment=-0.6
+    3. 包含未被否定的 suggestion 关键词 → suggestion 类型，sentiment=0.0
+    4. 包含未被否定的 positive 关键词 → positive 类型，sentiment=+0.8
+    5. 都不匹配或全被否定 → None（不是反馈）
+
+    否定检测：
+    - "not a bug" / "不是 bug" / "没有问题" → 关键词被否定，不触发该类型
+    - "不希望" → suggestion 被否定，降级处理
+    - 窗口内多个否定词只算一次否定
     """
 
     def detect(self, message: str) -> Optional[Feedback]:
@@ -122,29 +185,29 @@ class FeedbackDetector:
 
         lowered = message.lower()
 
-        # 按优先级检测
-        if any(kw in lowered for kw in _BUG_KEYWORDS):
+        # 按优先级检测（带否定检测）
+        if _find_keyword(lowered, _BUG_KEYWORDS):
             return Feedback(
                 feedback_type=FEEDBACK_BUG,
                 content=message.strip(),
                 sentiment_score=-0.8,
             )
 
-        if any(kw in lowered for kw in _NEGATIVE_KEYWORDS):
+        if _find_keyword(lowered, _NEGATIVE_KEYWORDS):
             return Feedback(
                 feedback_type=FEEDBACK_NEGATIVE,
                 content=message.strip(),
                 sentiment_score=-0.6,
             )
 
-        if any(kw in lowered for kw in _SUGGESTION_KEYWORDS):
+        if _find_keyword(lowered, _SUGGESTION_KEYWORDS):
             return Feedback(
                 feedback_type=FEEDBACK_SUGGESTION,
                 content=message.strip(),
                 sentiment_score=0.0,
             )
 
-        if any(kw in lowered for kw in _POSITIVE_KEYWORDS):
+        if _find_keyword(lowered, _POSITIVE_KEYWORDS):
             return Feedback(
                 feedback_type=FEEDBACK_POSITIVE,
                 content=message.strip(),

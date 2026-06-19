@@ -8,13 +8,25 @@ superclaw 进化调度器 — 定时触发进化循环
 - 支持多种进化模式（cycle/self_evolution/curious/experience/feedback）
 - 后台线程运行，不阻塞主进程
 - 优雅启停（start/stop/join）
+- 状态持久化（JSON 文件），进程崩溃重启后能恢复 run_count/last_run
 
 不依赖外部库，用 threading.Timer 实现简单的定时调度。
+
+诚实说明：
+- threading.Timer 是进程内调度，进程挂了调度就停。
+  生产环境需要 systemd/cron 级别的外部调度。
+- 状态持久化只记录 run_count/last_run/last_status，不恢复"未完成的进化"
+  （进化循环是幂等的，重启后从下一个周期开始即可）。
 """
+import json
+import logging
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -53,12 +65,14 @@ class EvolutionScheduler:
     """
 
     def __init__(self, engine: Any, interval: int = DEFAULT_INTERVAL,
-                 mode: str = MODE_CYCLE):
+                 mode: str = MODE_CYCLE,
+                 state_file: Optional[Path] = None):
         """
         Args:
             engine: GEPEngine 实例
             interval: 调度间隔（秒），默认 3600（1 小时）
             mode: 进化模式，见 VALID_MODES
+            state_file: 状态持久化文件路径，None 表示不持久化
         """
         if mode not in VALID_MODES:
             raise ValueError(f"无效模式 {mode}，可选: {VALID_MODES}")
@@ -68,14 +82,20 @@ class EvolutionScheduler:
         self.engine = engine
         self.interval = interval
         self.mode = mode
+        self.state_file = Path(state_file) if state_file else None
 
         self._timer: Optional[threading.Timer] = None
         self._lock = threading.Lock()
         self._running = False
         self._results: List[Dict[str, Any]] = []
         self._run_count = 0
+        self._last_run: Optional[str] = None  # ISO 时间戳
         # 回调钩子：MultiModeScheduler 用它实现多模式轮转
         self._callback_override: Optional[Any] = None
+
+        # 从持久化状态恢复 run_count/last_run
+        if self.state_file is not None:
+            self._load_state()
 
     def start(self) -> bool:
         """启动调度器（后台定时触发）
@@ -129,6 +149,7 @@ class EvolutionScheduler:
                 "interval": self.interval,
                 "run_count": self._run_count,
                 "results_count": len(self._results),
+                "last_run": self._last_run,
             }
 
     def join(self, timeout: Optional[float] = None) -> bool:
@@ -150,6 +171,41 @@ class EvolutionScheduler:
             if deadline is not None and time.time() >= deadline:
                 return False
             time.sleep(0.1)
+
+    # ---- 状态持久化 ----
+
+    def _load_state(self) -> None:
+        """从 state_file 恢复 run_count/last_run（启动时调用）"""
+        if self.state_file is None or not self.state_file.exists():
+            return
+        try:
+            data = json.loads(self.state_file.read_text(encoding="utf-8"))
+            self._run_count = int(data.get("run_count", 0))
+            self._last_run = data.get("last_run")
+            logger.info("调度器状态恢复: run_count=%d last_run=%s",
+                        self._run_count, self._last_run)
+        except (json.JSONDecodeError, OSError, ValueError) as e:
+            logger.warning("调度器状态恢复失败: %s", e)
+
+    def _save_state(self) -> None:
+        """保存 run_count/last_run 到 state_file（每次进化后调用）"""
+        if self.state_file is None:
+            return
+        try:
+            data = {
+                "run_count": self._run_count,
+                "last_run": self._last_run,
+                "mode": self.mode,
+                "interval": self.interval,
+                "saved_at": datetime.now().isoformat(),
+            }
+            self.state_file.parent.mkdir(parents=True, exist_ok=True)
+            self.state_file.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except OSError as e:
+            logger.warning("调度器状态保存失败: %s", e)
 
     # ---- 内部方法 ----
 
@@ -200,28 +256,39 @@ class EvolutionScheduler:
     def _execute_evolution(self) -> Dict[str, Any]:
         """执行一次进化（根据 mode 调用不同方法）"""
         self._run_count += 1
+        self._last_run = datetime.now().isoformat()
 
         if self.mode == MODE_CYCLE:
-            return self.engine.run_cycle()
+            result = self.engine.run_cycle()
+            self._save_state()
+            return result
 
         if self.mode == MODE_SELF_EVOLUTION:
             if hasattr(self.engine, "run_self_evolution_cycle"):
-                return self.engine.run_self_evolution_cycle()
+                result = self.engine.run_self_evolution_cycle()
+                self._save_state()
+                return result
             return {"status": "skipped", "reason": "self_evolution not available"}
 
         if self.mode == MODE_CURIOUS:
             if hasattr(self.engine, "run_curious_exploration"):
-                return self.engine.run_curious_exploration()
+                result = self.engine.run_curious_exploration()
+                self._save_state()
+                return result
             return {"status": "skipped", "reason": "curious_exploration not available"}
 
         if self.mode == MODE_EXPERIENCE:
             if hasattr(self.engine, "run_experience_driven_adjustment"):
-                return self.engine.run_experience_driven_adjustment()
+                result = self.engine.run_experience_driven_adjustment()
+                self._save_state()
+                return result
             return {"status": "skipped", "reason": "experience_adjustment not available"}
 
         if self.mode == MODE_FEEDBACK:
             if hasattr(self.engine, "run_feedback_driven_evolution"):
-                return self.engine.run_feedback_driven_evolution()
+                result = self.engine.run_feedback_driven_evolution()
+                self._save_state()
+                return result
             return {"status": "skipped", "reason": "feedback_driven not available"}
 
         return {"status": "unknown_mode", "mode": self.mode}
