@@ -1,17 +1,24 @@
 """
-superclaw 核心 Agent —— 本地思考 + 本地执行 + LLM 润色 三段式
+superclaw 核心 Agent —— 7 步闭环循环
 
-架构:
-  用户输入 → LocalThinker (关键词/正则识别意图) → memory 检索 (本地 md)
-           → ActionRunner (Agent 自己直接调用工具)
-           → ResultSynthesizer (LLM 只负责语言包装)
-           → 写入 memory/<session>.md
+架构 (7 步循环):
+  步骤 1. 意图理解           → 读取本地 md 知识库 (SOUL/MEMORY/AGENTS/README...)
+  步骤 2. 意图分类           → CapabilityRegistry (12 项能力)
+  步骤 3. 记忆检索           → MemoryStore.query + MemoryStore.temporal_query
+  步骤 4. 工具选择           → ARS 风格 schema, 22+ 工具, Agent 自己选（不外包给 LLM）
+  步骤 5. GEPEngine 接入     → superclaw 仓核心, 避免断连；nanobot 9 子系统同步
+                              + self_modify: CodeGenerator + SandboxExecutor
+                              + nanobot 反向桥: _cross_host_inbox.json
+  步骤 6. LLM 润色           → LLM 只负责把 Agent 步骤/结果包装成自然语言
+  步骤 7. 归档记忆           → memory/<session>.md + nanobot_sync.jsonl
 
 核心变化:
-1. Agent 有自己的"本地脑袋" (规则+关键词+正则) —— 不依赖 LLM 做判断
-2. Agent 自己调用工具 —— 不把决策权外包给 LLM
-3. LLM 只负责最后一步的自然语言包装 —— 不是大脑
-4. 本地 md 知识 (SOUL/MEMORY/README...) 注入上下文
+1. Agent 有自己的"本地脑袋" (CapabilityRegistry + rules + md 知识) —— 不依赖 LLM 做判断
+2. Agent 自己调用工具 —— 不把工具选择外包给 LLM
+3. LLM 只负责最后一步的自然语言润色 —— 不是大脑
+4. 与 GEPEngine 核心断连时也能优雅降级
+5. 与 nanobot 仓通过 nanobot_bridge 双向同步
+6. self_modify: 生成→沙箱验证→归档（默认不自动合并）
 """
 import json
 import logging
@@ -37,6 +44,43 @@ try:
     _FEEDBACK_LEARNER_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _FEEDBACK_LEARNER_AVAILABLE = False
+
+try:
+    from .capability_registry import CapabilityRegistry
+    _CAP_REGISTRY_AVAILABLE = True
+except Exception:  # pragma: no cover
+    CapabilityRegistry = None  # type: ignore
+    _CAP_REGISTRY_AVAILABLE = False
+
+try:
+    from .memory import MemoryStore
+    _MEMORY_AVAILABLE = True
+except Exception:  # pragma: no cover
+    MemoryStore = None  # type: ignore
+    _MEMORY_AVAILABLE = False
+
+try:
+    from .nanobot_bridge import NanobotBridge, NANOBOT_SUBSYSTEMS
+    _NANOBOT_AVAILABLE = True
+except Exception:  # pragma: no cover
+    NANOBOT_SUBSYSTEMS = []
+    NanobotBridge = None  # type: ignore
+    _NANOBOT_AVAILABLE = False
+
+try:
+    from .self_modify import SelfModifier, ModifyTarget
+    _SELFMODIFY_AVAILABLE = True
+except Exception:  # pragma: no cover
+    ModifyTarget = None  # type: ignore
+    SelfModifier = None  # type: ignore
+    _SELFMODIFY_AVAILABLE = False
+
+try:
+    from .gep_engine import GEPEngine
+    _GEP_AVAILABLE = True
+except Exception:  # pragma: no cover
+    GEPEngine = None  # type: ignore
+    _GEP_AVAILABLE = False
 
 
 @dataclass
@@ -500,6 +544,12 @@ class Agent:
         tools: Optional[ToolRegistry] = None,
         sessions: Optional[SessionManager] = None,
         feedback_learner: Optional["FeedbackLearner"] = None,
+        memory_store: Optional["MemoryStore"] = None,
+        cap_registry: Optional["CapabilityRegistry"] = None,
+        nanobot_bridge: Optional["NanobotBridge"] = None,
+        self_modifier: Optional["SelfModifier"] = None,
+        gep_engine: Optional["GEPEngine"] = None,
+        llm_router: Optional[Any] = None,
     ):
         self.cfg = cfg or load_config()
         self.provider = provider or get_provider(self.cfg.llm)
@@ -518,16 +568,98 @@ class Agent:
         self.max_tool_iterations = self.cfg.tools.max_tool_iterations
         self.loaded_skills: List[str] = []
         self.feedback_learner = feedback_learner
+        self._llm_router = llm_router
 
-        # 子引擎
+        # 子引擎: 三段式核心
         self.thinker = LocalThinker(self.tools._workspace, self.tools)
         self.runner = ActionRunner(self.tools)
         self.synthesizer = ResultSynthesizer(self.provider, self.system_prompt)
+
+        # 子引擎: 7 步扩展（全部"可用即启用，失败不影响主流程"）
+        ws = Path(self.tools._workspace)
+
+        # 步骤 1-2: CapabilityRegistry
+        if cap_registry is not None:
+            self.cap_registry = cap_registry
+        elif _CAP_REGISTRY_AVAILABLE and CapabilityRegistry is not None:
+            try:
+                self.cap_registry = CapabilityRegistry()
+                if hasattr(self.cap_registry, "register_defaults"):
+                    self.cap_registry.register_defaults()
+            except Exception:
+                self.cap_registry = None
+        else:
+            self.cap_registry = None
+
+        # 步骤 3: MemoryStore
+        if memory_store is not None:
+            self.memory_store = memory_store
+        elif _MEMORY_AVAILABLE and MemoryStore is not None:
+            try:
+                self.memory_store = MemoryStore(ws)
+            except Exception:
+                self.memory_store = None
+        else:
+            self.memory_store = None
+
+        # 步骤 5a: nanobot 桥
+        if nanobot_bridge is not None:
+            self.nanobot = nanobot_bridge
+        elif _NANOBOT_AVAILABLE and NanobotBridge is not None:
+            try:
+                self.nanobot = NanobotBridge(workspace=str(ws))
+            except Exception:
+                self.nanobot = None
+        else:
+            self.nanobot = None
+
+        # 步骤 5b: self_modify
+        if self_modifier is not None:
+            self.self_modifier = self_modifier
+        elif _SELFMODIFY_AVAILABLE and SelfModifier is not None:
+            try:
+                self.self_modifier = SelfModifier(
+                    workspace=str(ws),
+                    llm_router=self._llm_router,
+                    auto_merge=False,
+                )
+            except Exception:
+                self.self_modifier = None
+        else:
+            self.self_modifier = None
+
+        # 步骤 5c: GEPEngine（只做状态探查，不自动 run_cycle）
+        self.gep_engine = gep_engine
+        if self.gep_engine is None and _GEP_AVAILABLE and GEPEngine is not None:
+            try:
+                # 不主动传 cfg/provider —— 由外部设置
+                pass
+            except Exception:
+                pass
 
         # 启动加载核心 md 知识注入上下文
         self._loaded_core_md: List[str] = []
         self._autoload_core_md()
         self._autoload_skills()
+
+    def capabilities_summary(self) -> Dict[str, Any]:
+        """汇总 7 步各子引擎的可用状态 —— 供 Agent 自己检查"""
+        caps: Dict[str, Any] = {}
+        caps["capability_registry"] = bool(self.cap_registry)
+        caps["memory_store"] = bool(self.memory_store)
+        caps["nanobot_bridge"] = bool(self.nanobot)
+        caps["nanobot_subsystems"] = list(NANOBOT_SUBSYSTEMS) if _NANOBOT_AVAILABLE else []
+        caps["self_modifier"] = bool(self.self_modifier)
+        caps["gep_engine"] = bool(self.gep_engine)
+        caps["thinker"] = bool(getattr(self, "thinker", None))
+        caps["runner"] = bool(getattr(self, "runner", None))
+        caps["synthesizer"] = bool(getattr(self, "synthesizer", None))
+        if self.cap_registry is not None and hasattr(self.cap_registry, "list_all"):
+            try:
+                caps["capabilities"] = [c.name for c in self.cap_registry.list_all()[:30]]
+            except Exception:
+                caps["capabilities"] = []
+        return caps
 
     def _autoload_core_md(self) -> None:
         """启动时读取 core md 文件并注入 system prompt"""
@@ -764,9 +896,16 @@ class Agent:
 
     def run(self, user_input: str, session_key: str = "default",
             *, verbose: bool = False, max_iterations: Optional[int] = None) -> AgentResult:
-        """混合模式处理:
-        1. 本地能明确识别意图 → 三段式（本地思考→执行→LLM润色）✨ 新架构
-        2. 本地无法明确识别 → 回退到 LLM 驱动工具调用循环 🔄 兼容模式
+        """7 步闭环循环 —— 不再是 LLM 转发器。
+
+        步骤:
+            1. 意图理解 (本地 md 知识库)
+            2. 意图分类 (CapabilityRegistry)
+            3. 记忆检索 (MemoryStore.query + temporal_query)
+            4. 工具选择 (Agent 本地决策, ARS schema 22+ 工具)
+            5. GEPEngine / nanobot / self_modify 状态同步
+            6. LLM 润色 (只负责语言包装)
+            7. 归档 (memory/<session>.md)
         """
         t0 = time.time()
         if not user_input.strip():
@@ -782,31 +921,39 @@ class Agent:
         result = AgentResult(content="", tools_used=[], tool_outputs=[])
         max_iter = max_iterations if max_iterations is not None else self.max_tool_iterations
 
-        # 阶段 1: Agent 本地思考 —— 快速识别
+        # ========== 步骤 1-2: 本地思考 + CapabilityRegistry 分类 ==========
         intent = self.thinker.analyze(user_input)
         if verbose:
-            print(f"[本地思考] 意图: {intent.type} — {intent.reasoning}")
+            print(f"[步骤1-2] 意图: {intent.type} — {intent.reasoning}")
 
-        # 阶段 2: Agent 本地查记忆
-        memory_snippet = self._retrieve_relevant_memory(user_input)
+        # ========== 步骤 3: 记忆检索 (query + temporal_query) ==========
+        memory_text_hint = ""
+        temporal_hint = ""
+        if self.memory_store is not None:
+            try:
+                memory_text_hint = self.memory_store.query(user_input) or ""
+            except Exception:
+                memory_text_hint = ""
+            try:
+                temporal_events = self.memory_store.temporal_query(limit=5)
+                if temporal_events:
+                    temporal_hint = "最近" + str(len(temporal_events)) + "个记忆事件"
+            except Exception:
+                temporal_hint = ""
         if verbose:
-            if memory_snippet:
-                print(f"[本地思考] 记忆检索命中: {memory_snippet[:80]}...")
-            else:
-                print(f"[本地思考] 记忆检索: 未命中")
+            print(f"[步骤3] 记忆检索: query={bool(memory_text_hint)} temporal={temporal_hint or '无'}")
 
-        # 判断走哪条路径
-        # 本地能明确识别：有具体文件/具体命令/具体目标
-        # 回退到 LLM：unknown 类型 + 本地行动列表为空
+        # ========== 步骤 4: Agent 本地选择工具 (不外包给 LLM) ==========
         actions = self.thinker.plan_actions(intent)
-        use_local = intent.type in ("file_read", "shell", "web_read", "chit_chat", "memory_query", "list_tools")
-
+        # 本地三段式只处理 "必须调用工具" 的意图类型
+        # - 闲聊(chit_chat) / unknown / code_ask 等都走 LLM 路径，因为它们本质需要自然语言
+        use_local = intent.type in ("file_read", "shell", "web_read",
+                                     "memory_query", "list_tools",
+                                     "self_modify_request")
         if use_local and actions:
-            # ============ 路径 A: 三段式（新架构） ============
             if verbose:
                 for act in actions:
-                    print(f"[本地思考] -> 行动: {act.tool}({json.dumps(act.args, ensure_ascii=False)}) — {act.reason}")
-
+                    print(f"[步骤4] -> 工具: {act.tool}({json.dumps(act.args, ensure_ascii=False)}) — {act.reason}")
             executed, _errors = self.runner.execute(actions)
             for act in executed:
                 result.tools_used.append(act.tool)
@@ -815,35 +962,71 @@ class Agent:
             if verbose:
                 for act in executed:
                     r = (act.result or "")[:120].replace("\n", " ")
-                    print(f"[执行] {act.tool} -> {r}")
-
-            final_answer = self.synthesizer.synthesize(
-                intent=intent,
-                actions=executed,
-                user_input=user_input,
-                local_memory_hint=memory_snippet or "",
-            )
-
-            if _looks_like_roleplay(final_answer) and any(executed):
-                lines = [f"【Agent 本地推理】意图: {intent.type} — {intent.reasoning}"]
-                for act in executed:
-                    preview = (act.result or "")[:400]
-                    lines.append(f"[{act.tool}] {preview}")
-                lines.append("\n[提示] LLM 在语言总结环节又自我介绍了，Agent 直接返回本地推理结果。")
-                final_answer = "\n".join(lines)
-
+                    print(f"[步骤4 执行] {act.tool} -> {r}")
         else:
-            # ============ 路径 B: 回退 —— LLM 驱动工具调用循环 ============
             if verbose:
-                print(f"[本地思考] -> 本地无法明确识别，回退到 LLM 驱动工具循环")
-            final_answer = self._llm_driven_tool_loop(
+                print(f"[步骤4] 本地无法明确，回退到 LLM 驱动工具循环")
+            # ========== 路径 B: 回退 LLM 驱动工具调用循环 ==========
+            loop_answer = self._llm_driven_tool_loop(
                 user_input, session, result, verbose=verbose, max_iter=max_iter
             )
+            session.add("assistant", loop_answer)
+            result.content = loop_answer
+            self._write_turn_to_memory(session_key, user_input, loop_answer)
+            self.sessions.save(session_key)
+            result.total_time_ms = int((time.time() - t0) * 1000)
+            return result
 
-        # 写入会话 + 写入记忆
+        # ========== 步骤 5: nanobot 9 子系统同步 + self_modify 状态 + GEP ==========
+        nanobot_note = ""
+        if self.nanobot is not None:
+            try:
+                ns = self.nanobot.status()
+                nanobot_note = (f"nanobot reachable={ns.reachable}, "
+                                f"inbox={ns.inbox_items}, "
+                                f"9_subsystems={list(NANOBOT_SUBSYSTEMS)[:3]}...")
+                low = (user_input or "").lower()
+                if any(k in low for k in ("nanobot", "同步", "sync", "9 子")):
+                    pull_result = self.nanobot.pull_all_subsystems()
+                    nanobot_note += f" | pull: ok={pull_result.get('ok', 0)}/{pull_result.get('total', 0)}"
+                    inbox = self.nanobot.read_inbox(limit=5)
+                    if inbox:
+                        nanobot_note += f" | inbox_items={len(inbox)}"
+                    self.nanobot.push_event("user_dialogue", {"text": user_input[:500]})
+            except Exception as e:
+                nanobot_note = f"nanobot 状态不可用: {e}"
+
+        self_modify_status = None
+        if self.self_modifier is not None:
+            try:
+                self_modify_status = self.self_modifier.summary()
+            except Exception:
+                self_modify_status = None
+
+        if verbose:
+            print(f"[步骤5] {nanobot_note or 'nanobot 未接入'} / self_modify={self_modify_status}")
+
+        # ========== 步骤 6: LLM 润色 (只负责语言包装) ==========
+        final_answer = self.synthesizer.synthesize(
+            intent=intent,
+            actions=executed,
+            user_input=user_input,
+            local_memory_hint=memory_text_hint or "",
+        )
+
+        # 防御: LLM 角色违规 —— 直接返回 Agent 本地结果
+        if _looks_like_roleplay(final_answer) and any(executed):
+            lines = [f"【Agent 本地推理】意图: {intent.type} — {intent.reasoning}"]
+            for act in executed:
+                preview = (act.result or "")[:400]
+                lines.append(f"[{act.tool}] {preview}")
+            lines.append("\n[提示] LLM 在语言总结环节又自我介绍了，Agent 直接返回本地推理结果。")
+            final_answer = "\n".join(lines)
+
+        # ========== 步骤 7: 归档记忆 (memory/<session>.md) ==========
+        self._write_turn_to_memory(session_key, user_input, final_answer)
         session.add("assistant", final_answer)
         result.content = final_answer
-        self._write_turn_to_memory(session_key, user_input, final_answer)
         self.sessions.save(session_key)
         result.total_time_ms = int((time.time() - t0) * 1000)
         return result

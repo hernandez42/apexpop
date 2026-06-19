@@ -561,6 +561,121 @@ class MemoryStore:
         self.reflection.reflect(state)
         return self._format_reflections(1)
 
+    def temporal_query(self, start_time: Optional[float] = None,
+                       end_time: Optional[float] = None,
+                       limit: int = 20) -> List[Dict[str, Any]]:
+        """按时间窗口检索事件流（记忆 + 进化日志 + 反思）
+
+        参数:
+            start_time: 起始 unix 时间戳，None = 不限
+            end_time:   结束 unix 时间戳，None = 不限
+            limit:      最多返回条数
+
+        返回:
+            [{'ts': unix_ts, 'datetime': 'YYYY-MM-DD HH:MM:SS',
+              'source': 'reflection|evolution|session', 'content': str}]
+        """
+        import time
+        from datetime import datetime
+
+        events: List[Dict[str, Any]] = []
+        now = time.time()
+        if start_time is None:
+            start_time = 0
+        if end_time is None:
+            end_time = now
+
+        # 1) 反思日志
+        try:
+            if self.reflection.log_path.exists():
+                data = json.loads(self.reflection.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    for r in data:
+                        ts = r.get("ts") or r.get("timestamp") or 0
+                        if start_time <= float(ts) <= end_time:
+                            events.append({
+                                "ts": ts,
+                                "datetime": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
+                                "source": "reflection",
+                                "content": str(r.get("summary", r))[:400],
+                            })
+        except (json.JSONDecodeError, IOError, ValueError, TypeError):
+            pass
+
+        # 2) 进化日志
+        try:
+            if self.evolution.log_path.exists():
+                data = json.loads(self.evolution.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    for r in data:
+                        ts = r.get("ts") or r.get("timestamp") or 0
+                        if start_time <= float(ts) <= end_time:
+                            events.append({
+                                "ts": ts,
+                                "datetime": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
+                                "source": "evolution",
+                                "content": f"cycle={r.get('cycle')} phi={r.get('fitness')} domain={r.get('domain')}",
+                            })
+        except (json.JSONDecodeError, IOError, ValueError, TypeError):
+            pass
+
+        # 3) session/*.json
+        try:
+            sessions_dir = Path(str(self.root)) / "sessions"
+            if sessions_dir.exists():
+                for sf in sorted(sessions_dir.glob("*.json")):
+                    try:
+                        st = sf.stat()
+                        if not (start_time <= st.st_mtime <= end_time):
+                            continue
+                        data = json.loads(sf.read_text(encoding="utf-8"))
+                        msgs = data.get("messages") if isinstance(data, dict) else None
+                        if isinstance(msgs, list) and msgs:
+                            m = msgs[-1]
+                            events.append({
+                                "ts": st.st_mtime,
+                                "datetime": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                                "source": "session",
+                                "content": f"{sf.stem} | last={str(m.get('content', m))[:200]}",
+                            })
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+        # 按时间倒序
+        events.sort(key=lambda e: float(e.get("ts", 0)), reverse=True)
+        return events[:limit]
+
+    def memory_status(self) -> Dict[str, Any]:
+        """记忆系统概览状态 — 供 Agent UI/步骤摘要使用"""
+        stats = self.knowledge.stats()
+        s = {
+            "knowledge_files": stats.get("total", 0),
+            "reflections": 0,
+            "evolution_cycles": 0,
+            "has_temporal": True,
+            "latest_reflection": None,
+        }
+        try:
+            if self.reflection.log_path.exists():
+                data = json.loads(self.reflection.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    s["reflections"] = len(data)
+                    if data:
+                        last = data[-1]
+                        s["latest_reflection"] = str(last.get("summary", last))[:120]
+        except Exception:
+            pass
+        try:
+            if self.evolution.log_path.exists():
+                data = json.loads(self.evolution.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    s["evolution_cycles"] = len(data)
+        except Exception:
+            pass
+        return s
+
 
 # ============================================================
 # 测试
