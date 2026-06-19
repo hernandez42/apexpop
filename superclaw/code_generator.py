@@ -415,7 +415,8 @@ class SandboxExecutor:
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONHASHSEED": "0",
             # 不设 PYTHONPATH → 子进程只找 cwd 和 stdlib
-            "HOME": os.environ.get("HOME", "/tmp"),
+            # /tmp 仅作 HOME 缺失时的兜底，非临时文件写入路径（nosec B108）
+            "HOME": os.environ.get("HOME", "/tmp"),  # nosec B108
         }
         return env
 
