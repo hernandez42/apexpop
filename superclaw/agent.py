@@ -51,32 +51,69 @@ _ARG_RE = re.compile(r'<(\w+)>(.*?)</\1>', re.DOTALL)
 
 
 def _parse_tool_call(text: str) -> Optional[Tuple[str, Dict[str, str]]]:
-    """从文本中解析工具调用"""
-    # 格式 1: <tool name><arg1>v1</arg1><arg2>v2</arg2></tool>
-    match = _TOOL_TAG_RE.search(text)
-    if match:
-        name = match.group(1).strip()
-        args_raw = match.group(2).strip()
-        args = {}
-        for m in _ARG_RE.finditer(args_raw):
-            args[m.group(1).strip()] = m.group(2).strip()
-        return name, args
+    """从文本中解析工具调用。支持多种格式，容忍空白、自然语言包裹。
 
-    # 格式 2: {"tool": "name", "args": {...}}
+匹配优先级：
+1. `<tool name> <arg>val</arg> </tool>` XML 风格（推荐）
+2. `{"tool": "name", "args": {...}}`  JSON
+3. `{"name": "tool", "input": {...}}`  JSON（LangChain 风格）
+"""
+    if not text:
+        return None
+
+    stripped = text.strip()
+
+    # 格式 1: <tool name> <arg>val</arg> </tool>
+    # 兼容：<tool  name> <arg> val </arg> </tool> 以及空白/换行变体
+    m = re.search(r"<tool\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*>.*?</tool>", stripped, re.DOTALL)
+    if m:
+        name = m.group(1).strip()
+        body = m.group(0)  # 整个 tool 标签
+        args = dict(re.findall(r"<(\w+)>(.*?)</\1>", body, re.DOTALL))
+        if name:
+            return name, args
+
+    # 格式 1b: 宽松的 XML 风格 <name>val</name> 包裹
+    m = re.search(r"<([a-zA-Z_][a-zA-Z0-9_]*)>(.*?)</\1>", stripped, re.DOTALL)
+    if m and m.group(1) in ("tool",):
+        body = m.group(2)
+        inner = re.search(r"<([a-zA-Z_][a-zA-Z0-9_]*)>", body)
+        if inner:
+            name = inner.group(1)
+            args = dict(re.findall(r"<(\w+)>(.*?)</\1>", body, re.DOTALL))
+            return name, args
+
+    # 格式 2: JSON {"tool": "name", "args": {...}}
+    # 先尝试整行解析，失败则提取最大的 JSON 对象
     try:
-        data = json.loads(text.strip())
+        data = json.loads(stripped)
         if isinstance(data, dict) and "tool" in data:
-            return data["tool"], data.get("args", {})
+            args = data.get("args", {})
+            return data["tool"], {k: str(v) for k, v in args.items()}
     except (json.JSONDecodeError, ValueError):
         pass
 
-    # 格式 3: {"name": "tool", "input": {"key": "value"}}
+    # 格式 3: JSON {"name": "tool", "input": {...}}
     try:
-        data = json.loads(text.strip())
+        data = json.loads(stripped)
         if isinstance(data, dict) and "name" in data:
-            return data["name"], data.get("input", {})
+            args = data.get("input", {}) or {}
+            return data["name"], {k: str(v) for k, v in args.items()}
     except (json.JSONDecodeError, ValueError):
         pass
+
+    # 格式 4: 文本中嵌入的 JSON（LLM 可能输出 "好的，我将调用 { ... }"）
+    json_match = re.search(r"\{[^}]*\"(tool|name)\"[^}]*\}", stripped, re.DOTALL)
+    if json_match:
+        try:
+            data = json.loads(json_match.group(0))
+            if isinstance(data, dict):
+                if "tool" in data:
+                    return data["tool"], {k: str(v) for k, v in (data.get("args") or {}).items()}
+                if "name" in data:
+                    return data["name"], {k: str(v) for k, v in (data.get("input") or {}).items()}
+        except (json.JSONDecodeError, ValueError):
+            pass
 
     return None
 
