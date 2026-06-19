@@ -10,7 +10,7 @@ import logging
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +114,8 @@ class SuperclawConfig:
 
 def _validate_config(cfg: Dict[str, Any], defaults: Dict[str, Any]) -> None:
     """校验配置值类型，拒绝非法类型（静默降级为默认值）"""
-    # 工具类型定义
-    type_specs = {
+    # 工具类型定义（显式标注 value type 避免 mypy 推断为 object）
+    type_specs: Dict[str, Dict[str, type]] = {
         "llm": {
             "provider": str, "model": str, "api_key": str,
             "base_url": str, "temperature": float,
@@ -126,8 +126,15 @@ def _validate_config(cfg: Dict[str, Any], defaults: Dict[str, Any]) -> None:
             "shell": bool, "file": bool, "web": bool,
             "think": bool, "max_tool_iterations": int,
         },
-        "workspace": str,
     }
+
+    # workspace 是顶级字段，单独校验
+    if "workspace" in cfg and not isinstance(cfg["workspace"], str):
+        logger.warning(
+            "[Config] 字段 workspace 类型错误 (%s)，使用默认值",
+            type(cfg["workspace"]).__name__
+        )
+        cfg["workspace"] = defaults.get("workspace", str(Path.cwd()))
 
     def check_section(section: str, data: Dict[str, Any],
                       spec: Dict[str, type]) -> None:
@@ -142,11 +149,12 @@ def _validate_config(cfg: Dict[str, Any], defaults: Dict[str, Any]) -> None:
                     "[Config] 字段 %s.%s 类型错误 (%s)，使用默认值",
                     section, key, type(val).__name__
                 )
-                data[key] = defaults.get(section, {}).get(key)
+                section_defaults = defaults.get(section, {})
+                data[key] = section_defaults.get(key) if isinstance(section_defaults, dict) else None
 
     for section, spec in type_specs.items():
         if section in cfg:
-            check_section(section, cfg[section], spec)
+            check_section(section, cast(Dict[str, Any], cfg[section]), spec)
 
 
 def _env_override(cfg: Dict[str, Any]) -> Dict[str, Any]:

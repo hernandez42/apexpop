@@ -14,6 +14,7 @@ superclaw CLI 入口
 """
 import argparse
 import sys
+import time
 from pathlib import Path
 
 # 支持 `python3 cli.py` 从 repo 根目录运行，或 `python3 -m superclaw` 从任意目录运行
@@ -145,8 +146,9 @@ def _run_schedule(args, cfg: SuperclawConfig) -> int:
     print("  Ctrl+C 停止")
     print("-" * 60)
 
+    from typing import Any
     if mode == "multi":
-        scheduler = MultiModeScheduler(
+        scheduler: Any = MultiModeScheduler(
             engine, interval=interval,
             modes=[MODE_CYCLE, MODE_CURIOUS, MODE_FEEDBACK],
         )
