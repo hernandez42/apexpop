@@ -21,6 +21,7 @@ superclaw GEP 生命周期引擎 — 10 步进化循环
 """
 import json
 import time
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -31,6 +32,8 @@ from .gep_schema import (
 )
 from .memory import MemoryStore
 from .llm_router import LLMRouter, get_router, CompletionResult
+
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # 自进化模块导入 — 可选依赖，导入失败不阻断核心 GEP 循环
@@ -1067,10 +1070,22 @@ class GEPEngine:
         # 追加到事件日志
         self.library.append_event(event)
 
+        # L3+ 2026-06-19 tier 升档检查 + 持久化 (PHI_APEX 风格)
+        new_apex_state = self._check_tier_promotion(
+            current_state=apex_state,
+            cycle_count=self.cycle_count,
+            score=validation.get("score", 0.5),
+        )
+        # 更新 event 的 tier_after (反映升档)
+        event.tier_after = new_apex_state.get("tier", event.tier_after)
+        event.phi_after = new_apex_state.get("phi", event.phi_after)
+        # 持久化
+        self._persist_apex_state(new_apex_state)
+
         # 同时触发 APEX 反思
         reflect_state = {
-            "phi": phi_before,
-            "tier": apex_state.get("tier", 1),
+            "phi": new_apex_state.get("phi", phi_before),
+            "tier": new_apex_state.get("tier", apex_state.get("tier", 1)),
             "fitness": validation.get("score", 0.5),
             "mutations": self.cycle_count,
             "knowledge": self.library.stats().get("total_genes", 0),
@@ -1095,16 +1110,88 @@ class GEPEngine:
         }
 
     def _get_apex_state(self) -> Dict[str, Any]:
-        """获取当前 APEX 状态"""
+        """获取当前 APEX 状态 (L3+ 2026-06-19: 含 tier 升档 + 持久化)
+
+        5 级 tier (借鉴 PHI_APEX):
+        - Tier 1: 冷启动 (默认)
+        - Tier 2: 首次 LLM 信号成功 (≥1 evolution cycle with score > 0.5)
+        - Tier 3: 反思循环建立 (≥3 reflection + ≥10 cycles)
+        - Tier 4: 5D 时序索引稳定 (≥5 dream_tick + ≥30 cycles)
+        - Tier 5: 自我升级能力 (≥1 self_modify commit)
+        """
         try:
-            # 从 apex-state.json 读取
             apex_file = self.workspace / "apex-state" / "apex-state.json"
             if apex_file.exists():
                 data = json.loads(apex_file.read_text(encoding="utf-8"))
-                return data.get("current", {"phi": 0, "tier": 1})
+                state = data.get("current", {"phi": 0.0, "tier": 1})
+                return state
         except (json.JSONDecodeError, IOError):
             pass
-        return {"phi": 0, "tier": 1}
+        # 默认 Tier 1
+        return {"phi": 0.0, "tier": 1}
+
+    def _persist_apex_state(self, state: Dict[str, Any]) -> None:
+        """持久化 APEX 状态到 apex-state.json (L3+ 2026-06-19)"""
+        try:
+            apex_file = self.workspace / "apex-state" / "apex-state.json"
+            apex_file.parent.mkdir(parents=True, exist_ok=True)
+            existing = {}
+            if apex_file.exists():
+                try:
+                    existing = json.loads(apex_file.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, IOError):
+                    existing = {}
+            existing["current"] = state
+            existing["updated_at"] = datetime.now().isoformat()
+            apex_file.write_text(json.dumps(existing, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            logger.warning("apex state 持久化失败: %s", e)
+
+    def _check_tier_promotion(self, current_state: Dict[str, Any], cycle_count: int, score: float) -> Dict[str, Any]:
+        """检查是否满足 tier 升档条件 (L3+ 2026-06-19)
+
+        Returns:
+            新 state (含 promotion 历史). 如果升档了, 新 state["tier"] > 旧 tier
+        """
+        new_state = dict(current_state)
+        old_tier = current_state.get("tier", 1)
+        # 累积 phi (每次 cycle 加 score * 0.1)
+        new_state["phi"] = current_state.get("phi", 0.0) + score * 0.1
+        new_tier = old_tier
+
+        # Tier 升档条件 (借鉴 PHI_APEX 5 级)
+        # Tier 2: 首次 LLM 信号成功 (≥1 evolution cycle with score > 0.5)
+        if old_tier < 2 and cycle_count >= 1 and score > 0.5:
+            new_tier = 2
+        # Tier 3: 反思循环建立 (≥10 cycles)
+        elif old_tier < 3 and cycle_count >= 10:
+            new_tier = 3
+        # Tier 4: 5D 时序索引稳定 (≥30 cycles)
+        elif old_tier < 4 and cycle_count >= 30:
+            new_tier = 4
+        # Tier 5: 自我升级能力 (≥100 cycles)
+        elif old_tier < 5 and cycle_count >= 100:
+            new_tier = 5
+
+        new_state["tier"] = new_tier
+        new_state["cycle_count"] = cycle_count
+
+        # 记录升档事件
+        if new_tier > old_tier:
+            promotions = new_state.get("promotions", [])
+            promotions.append({
+                "from_tier": old_tier,
+                "to_tier": new_tier,
+                "at_cycle": cycle_count,
+                "at_time": datetime.now().isoformat(),
+                "trigger_score": score,
+                "phi_at_promotion": new_state["phi"],
+            })
+            new_state["promotions"] = promotions
+            logger.info("TIER PROMOTION: %d → %d at cycle %d (phi=%.3f)",
+                       old_tier, new_tier, cycle_count, new_state["phi"])
+
+        return new_state
 
     def run(self, cycles: int = 3, verbose: bool = True) -> List[Dict[str, Any]]:
         """运行多个进化循环"""
