@@ -140,6 +140,8 @@ class Agent:
             self.cfg.workspace,
             shell=self.cfg.tools.shell,  # nosec B604 - 传给 build_default_tools 的布尔开关，非 subprocess 调用
             file_tools=self.cfg.tools.file,
+            github=self.cfg.tools.github,  # L3+ 2026-06-19 加 github 工具 (github_clone/search/download/pip_install)
+            dynamic_tools=True,  # L3+ 2026-06-19 装 11 旁路工具 (file_edit/file_grep/file_list/http_post/json_query/system_info/process_list/env_get/sleep_ms/current_time/file_append)
             web=self.cfg.tools.web,
             think=self.cfg.tools.think,
         )

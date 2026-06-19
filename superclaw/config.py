@@ -44,6 +44,7 @@ _CONFIG_SCHEMA: Dict[str, Any] = {
                 "shell": {"type": "boolean"},
                 "file": {"type": "boolean"},
                 "web": {"type": "boolean"},
+                "github": {"type": "boolean"},
                 "think": {"type": "boolean"},
                 "max_tool_iterations": {"type": "integer"},
             },
@@ -71,6 +72,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "shell": True,
         "file": True,
         "web": False,
+        "github": False,
         "think": True,
         "max_tool_iterations": 5,
     },
@@ -101,6 +103,7 @@ class ToolsConfig:
     file: bool = True
     web: bool = False
     think: bool = True
+    github: bool = False  # L3+ 2026-06-19 加 github 工具开关 (github_clone/search/download/pip_install)
     max_tool_iterations: int = 5
 
 
@@ -123,7 +126,7 @@ def _validate_config(cfg: Dict[str, Any], defaults: Dict[str, Any]) -> None:
         },
         "session": {"max_messages": int, "path": str},
         "tools": {
-            "shell": bool, "file": bool, "web": bool,
+            "shell": bool, "file": bool, "web": bool, "github": bool,
             "think": bool, "max_tool_iterations": int,
         },
     }

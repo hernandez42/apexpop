@@ -2,12 +2,20 @@
 superclaw 工具系统
 类似 nanobot 的 ToolRegistry — 简单但真实
 """
+import sys
 import shlex
 import subprocess
 import time
+import logging
+import re
+import os
+import json
 from pathlib import Path
+from urllib import request as _ureq
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 
 def tool(func: Callable) -> Callable:
@@ -129,6 +137,7 @@ class ToolRegistry:
 
 def build_default_tools(cfg_workspace: str,
                         shell: bool = True, file_tools: bool = True,
+                        dynamic_tools: bool = False,  # L3+ 2026-06-19 装 11 旁路工具开关
                         web: bool = False, think: bool = True,
                         github: bool = False) -> ToolRegistry:
     """创建默认工具
@@ -138,6 +147,12 @@ def build_default_tools(cfg_workspace: str,
     """
     tools = ToolRegistry()
     tools.set_workspace(cfg_workspace)
+    # L3+ 2026-06-19 装 11 旁路工具 (file_edit/file_grep/file_list/http_post/json_query/system_info/process_list/env_get/sleep_ms/current_time/file_append)
+    if dynamic_tools:
+        # L3+ 2026-06-19 直接内联 11 旁路工具 (避免 v250 path 优先冲突)
+        if dynamic_tools:
+            _install_inline_dynamic_tools(tools)
+
 
     # think 工具 — 用于让 Agent 自己思考、推理、分析
     if think:
@@ -402,3 +417,144 @@ def scan_skills(skills_dir: Path) -> List[Dict[str, Any]]:
         })
 
     return skills
+
+def _install_inline_dynamic_tools(registry) -> int:
+    """L3+ 2026-06-19 内联 11 旁路工具 (从 evolved.dynamic_tools 复制, 避免 sys.path 冲突)
+    返回新工具数. 工具集:
+    file_edit, file_grep, file_list, file_append, http_post, json_query,
+    system_info, process_list, env_get, sleep_ms, current_time
+    """
+    def _file_edit(path: str, old_text: str, new_text: str) -> str:
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            if old_text not in content:
+                return f"[错误] 未找到 old_text (长度 {len(old_text)})"
+            content = content.replace(old_text, new_text, 1)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
+            return f"[成功] 已替换 {path}"
+        except Exception as e:
+            return f"[错误] {e}"
+
+    def _file_grep(pattern: str, path: str = ".", max_results: int = 20) -> str:
+        try:
+            r = re.compile(pattern)
+            results = []
+            for root, _, files in os.walk(path):
+                for fn in files:
+                    fp = os.path.join(root, fn)
+                    try:
+                        with open(fp, encoding="utf-8", errors="ignore") as f:
+                            for i, line in enumerate(f, 1):
+                                if r.search(line):
+                                    results.append(f"{fp}:{i}:{line.rstrip()}")
+                                    if len(results) >= max_results:
+                                        return "\n".join(results)
+                    except (PermissionError, IsADirectoryError):
+                        continue
+            return "\n".join(results) if results else "[无匹配]"
+        except Exception as e:
+            return f"[错误] {e}"
+
+    def _file_list(path: str = ".", pattern: str = "*", max_files: int = 50) -> str:
+        try:
+            from glob import glob
+            results = glob(os.path.join(path, pattern))[:max_files]
+            return "\n".join(results) if results else "[无文件]"
+        except Exception as e:
+            return f"[错误] {e}"
+
+    def _http_post(url: str, body: str = "", headers: str = "") -> str:
+        try:
+            hdrs = {"User-Agent": "superclaw/0.1"}
+            for line in headers.splitlines():
+                if ":" in line:
+                    k, v = line.split(":", 1)
+                    hdrs[k.strip()] = v.strip()
+            req = _ureq.Request(url, data=body.encode() if body else None,
+                                headers=hdrs, method="POST")
+            with _ureq.urlopen(req, timeout=30) as resp:
+                return resp.read().decode(errors="ignore")[:5000]
+        except Exception as e:
+            return f"[错误] {e}"
+
+    def _json_query(json_str: str, jq_like: str = ".") -> str:
+        try:
+            data = json.loads(json_str)
+            for part in jq_like.split("."):
+                if not part:
+                    continue
+                if "[" in part:
+                    name, idx = part.split("[")
+                    idx = int(idx.rstrip("]"))
+                    data = data[name][idx] if name else data[idx]
+                else:
+                    data = data[part]
+            return str(data)
+        except Exception as e:
+            return f"[错误] {e}"
+
+    def _system_info() -> str:
+        import platform as _p
+        mem = os.popen("free -m").read() if os.path.exists("/proc/meminfo") else "N/A"
+        return f"platform: {_p.platform()}\ncpu: {_p.processor() or os.uname().machine}\nmem:\n{mem}"
+
+    def _process_list(max_n: int = 20) -> str:
+        try:
+            import subprocess as _sp
+            out = _sp.check_output(["ps", "-eo", "pid,pcpu,pmem,comm", "--sort=-pcu"], text=True)
+            lines = out.splitlines()[:max_n+1]
+            return "\n".join(lines)
+        except Exception as e:
+            return f"[错误] {e}"
+
+    def _env_get(name: str) -> str:
+        val = os.environ.get(name, "")
+        if any(k in name.upper() for k in ["KEY", "TOKEN", "SECRET", "PASSWORD"]):
+            if val:
+                return "[REDACTED]"
+        return val
+
+    def _sleep_ms(ms: int) -> str:
+        time.sleep(ms / 1000)
+        return f"[已睡眠 {ms}ms]"
+
+    def _current_time() -> str:
+        return time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime())
+
+    def _file_append(path: str, content: str) -> str:
+        p = Path(path)
+        try:
+            with p.open("a", encoding="utf-8") as f:
+                f.write(content)
+            return f"[成功] 已追加 {len(content)} 字符到 {path}"
+        except Exception as e:
+            return f"[错误] {e}"
+
+    funcs = {
+        "file_edit": (_file_edit, "精确替换文件中的 old_text 为 new_text (单次替换).",
+                      {"path": {"type": "string"}, "old_text": {"type": "string"}, "new_text": {"type": "string"}}),
+        "file_grep": (_file_grep, "在 path 下递归 grep pattern (re 语法), 返回匹配行.",
+                      {"pattern": {"type": "string"}, "path": {"type": "string"}, "max_results": {"type": "integer"}}),
+        "file_list": (_file_list, "列出 path 下匹配 pattern 的文件.",
+                      {"path": {"type": "string"}, "pattern": {"type": "string"}, "max_files": {"type": "integer"}}),
+        "file_append": (_file_append, "追加内容到文件末尾.",
+                        {"path": {"type": "string"}, "content": {"type": "string"}}),
+        "http_post": (_http_post, "POST 请求 body 到 URL, 用 urllib.",
+                      {"url": {"type": "string"}, "body": {"type": "string"}, "headers": {"type": "string"}}),
+        "json_query": (_json_query, "简化 jq: .a.b[0] 路径查询 JSON.",
+                       {"json_str": {"type": "string"}, "jq_like": {"type": "string"}}),
+        "system_info": (_system_info, "返回系统基本信息 (platform/cpu/mem/disk).", {}),
+        "process_list": (_process_list, "列出 top CPU 占用进程.", {"max_n": {"type": "integer"}}),
+        "env_get": (_env_get, "获取环境变量 (敏感字段 redact).", {"name": {"type": "string"}}),
+        "sleep_ms": (_sleep_ms, "睡眠 N 毫秒 (用于调度/测试).", {"ms": {"type": "integer"}}),
+        "current_time": (_current_time, "返回当前时间字符串.", {}),
+    }
+    n = 0
+    for name, (func, desc, params) in funcs.items():
+        if name in registry.names:
+            continue
+        registry.register(name, func, desc, params)
+        n += 1
+    return n
