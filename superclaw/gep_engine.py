@@ -1146,7 +1146,18 @@ class GEPEngine:
 
         if not self._use_real_steps:
             result["status"] = "skipped"
-            result["errors"].append("自进化模块未完整配置，跳过")
+            missing = []
+            if self.code_generator is None:
+                missing.append("code_generator")
+            if self.sandbox_executor is None:
+                missing.append("sandbox_executor")
+            if self.dynamic_loader is None:
+                missing.append("dynamic_loader")
+            if self.evolution_validator is None:
+                missing.append("evolution_validator")
+            result["errors"].append(
+                f"自进化模块未完整配置（缺少: {', '.join(missing)}），跳过"
+            )
             return result
 
         # 此时 _use_real_steps=True，所有模块都已配置（mypy 无法推断，显式断言）

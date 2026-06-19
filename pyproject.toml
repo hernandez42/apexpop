@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "superclaw"
 version = "2.4.0"
 description = "Self-evolving AI — C core × Rust × Python (GEP + APEX + LLM)"
-readme = "MEMORY.md"
+readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "superclaw" }]

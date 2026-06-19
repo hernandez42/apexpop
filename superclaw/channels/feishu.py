@@ -67,7 +67,7 @@ class FeishuChannel(BaseChannel):
     def __init__(self, config: Any, bus: MessageBus):
         super().__init__(config, bus)
         self.app_id = self._get_config("app_id", "")
-        self.app_secret = self._get_config("app_secret", "")
+        self.app_secret = self._get_config("app_secret", "")  # nosec B105 — 从配置/环境变量读取，非硬编码
         self._lark = None
         self._ws_client: Any = None
         self._tenant_access_token = ""
@@ -119,7 +119,7 @@ class FeishuChannel(BaseChannel):
         )
 
         self._running = True
-        logger.info(f"[Feishu] ✅ 飞书渠道启动 (app_id={self.app_id[:8]}...)")
+        logger.info(f"[Feishu] ✅ 飞书渠道启动 (app_id={self._mask_app_id(self.app_id)})")
 
         # 启动 WebSocket 连接（阻塞）
         try:
@@ -211,6 +211,12 @@ class FeishuChannel(BaseChannel):
                 pass
         logger.info("[Feishu] 渠道已停止")
 
+    def _mask_app_id(self, app_id: str) -> str:
+        """脱敏 app_id 用于日志"""
+        if len(app_id) <= 8:
+            return app_id[:4] + "****"
+        return app_id[:8] + "****"
+
     async def send(self, msg: OutboundMessage) -> None:
         """通过飞书 API 发送消息"""
         if not self._lark:
@@ -223,11 +229,13 @@ class FeishuChannel(BaseChannel):
                 CreateMessageRequestBody,
             )
 
-            # 获取 tenant_access_token
-            token = await self._get_tenant_token()
+            # 获取 tenant_access_token（复用实例变量缓存）
+            token = self._tenant_access_token
             if not token:
-                logger.error("[Feishu] 获取 tenant_access_token 失败")
-                return
+                token = await self._get_tenant_token()
+                if not token:
+                    logger.error("[Feishu] 获取 tenant_access_token 失败")
+                    return
 
             # 构建请求
             request = (
@@ -243,20 +251,22 @@ class FeishuChannel(BaseChannel):
                 .build()
             )
 
-            # 发送
+            # 发送（带 tenant_access_token，避免每次重新获取）
+            masked = self._mask_app_id(self.app_id)
             response = self._lark.Client.builder() \
                 .app_id(self.app_id) \
                 .app_secret(self.app_secret) \
+                .tenant_access_token(token) \
                 .build() \
                 .im.v1.message.create(request)
 
             if not response.success():
-                logger.error(f"[Feishu] 发送失败: {response.msg}")
+                logger.error(f"[Feishu] 发送失败 (app_id={masked}): {response.msg}")
             else:
                 logger.debug(f"[Feishu] 消息已发送到 {msg.chat_id}")
 
         except Exception as e:
-            logger.error(f"[Feishu] 发送错误: {e}")
+            logger.error(f"[Feishu] 发送错误 (app_id={self._mask_app_id(self.app_id)}): {e}")
 
     async def send_delta(self, chat_id: str, delta: str,
                          metadata: Optional[Dict[str, Any]] = None) -> None:
@@ -307,7 +317,7 @@ class FeishuChannel(BaseChannel):
         return {
             "enabled": False,
             "app_id": "",
-            "app_secret": "",
+            "app_secret": "",  # nosec B105 — 默认空值，实际值从环境变量或 config.json 读取
             "allow_from": ["*"],
             "streaming": False,
         }

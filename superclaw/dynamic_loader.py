@@ -420,10 +420,8 @@ class DynamicToolLoader:
         if tool_name not in self._dynamic_tools:
             return False
         meta = self._dynamic_tools[tool_name]
-        # 从 ToolRegistry 移除（ToolRegistry 没有 unregister，直接操作 _tools）
-        tools_dict = getattr(self.tool_registry, "_tools", None)
-        if isinstance(tools_dict, dict) and tool_name in tools_dict:
-            del tools_dict[tool_name]
+        # 通过官方 API 从 ToolRegistry 注销
+        self.tool_registry.unregister(tool_name)
         # 从 sys.modules 移除模块
         module_name = meta.get("module_name", "")
         if module_name:

@@ -71,6 +71,17 @@ class ToolRegistry:
     def has(self, name: str) -> bool:
         return name in self._tools
 
+    def unregister(self, name: str) -> bool:
+        """注销工具（从注册表移除）
+
+        Returns:
+            True 如果工具存在并已移除，False 如果工具不存在
+        """
+        if name in self._tools:
+            del self._tools[name]
+            return True
+        return False
+
     def call(self, name: str, **kwargs) -> ToolResult:
         """调用工具"""
         if name not in self._tools:

@@ -3,11 +3,19 @@ superclaw 核心 Agent 循环
 参考 nanobot 的 AgentLoop 设计，极简但功能完整
 """
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+# 统一配置 logging（确保 debug/info 日志可见）
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
 
 from .config import SuperclawConfig, load_config
 from .providers import BaseProvider, get_provider, SYSTEM_PROMPT
