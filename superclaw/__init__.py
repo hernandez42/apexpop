@@ -3,7 +3,7 @@ superclaw — 轻量级 AI Agent 框架
 灵感来自 nanobot / picoclaw / Evolver
 设计目标：代码极简、真实可运行、不造假
 """
-__version__ = "2.3.0"
+__version__ = "2.4.0"
 __logo__ = "🦖"
 
 from .agent import Agent, AgentResult
