@@ -80,6 +80,9 @@ try:
 except ImportError:  # pragma: no cover
     _FEEDBACK_LEARNER_AVAILABLE = False
 
+# core_bridge 仅用 stdlib，无外部依赖，始终可用
+_CORE_BRIDGE_AVAILABLE = True
+
 
 # ============================================================
 # 信号提取器 — 对照 Evolver analyzer.js
@@ -356,7 +359,9 @@ class GEPEngine:
                  project_root: Optional[Path] = None,
                  curiosity: Optional["CuriosityDrive"] = None,
                  experience_learner: Optional["ExperienceLearner"] = None,
-                 feedback_learner: Optional["FeedbackLearner"] = None):
+                 feedback_learner: Optional["FeedbackLearner"] = None,
+                 c_core: Optional[Any] = None,
+                 rust_engine: Optional[Any] = None):
         self.workspace = workspace or Path(__file__).parent.parent.resolve()
         self.memory = memory or MemoryStore(self.workspace)
         self.llm = llm or get_router()
@@ -376,6 +381,10 @@ class GEPEngine:
 
         # ---- 经验学习（可选）----
         self.experience_learner = experience_learner
+
+        # ---- C/Rust 核心桥接（可选，None 时走纯 Python 逻辑）----
+        self.c_core = c_core
+        self.rust_engine = rust_engine
 
         # ---- 自进化模块（可选，全部 None 时走原有逻辑）----
         self.capability_registry = capability_registry
@@ -515,6 +524,33 @@ class GEPEngine:
                 result["experience_recorded"] = True
             except Exception:
                 result["experience_recorded"] = False
+
+        # ---- C/Rust 核心桥接：真调二进制记录进化（可选）----
+        # C 核心心跳推进 cycle + 记录 mutations/knowledge
+        # Rust 引擎按 category 变异基因，量化平衡
+        core_status: Dict[str, Any] = {}
+        if self.c_core is not None:
+            try:
+                hb = self.c_core.heartbeat()
+                if hb.get("status") == "ok":
+                    # 记录本次进化的 mutations/knowledge 到 C 核心状态机
+                    self.c_core.record_evolution(
+                        mutations=1 if capsule is not None else 0,
+                        knowledge=len(signals),
+                    )
+                    core_status["c_heartbeat"] = hb.get("data", {})
+            except Exception as e:
+                core_status["c_error"] = str(e)
+        if self.rust_engine is not None:
+            try:
+                # 按 category 在 Rust 引擎里变异一个基因
+                mut = self.rust_engine.mutate(domain=str(category), change=0.1)
+                if mut.get("status") == "ok":
+                    core_status["rust_mutate"] = mut.get("data", {})
+            except Exception as e:
+                core_status["rust_error"] = str(e)
+        if core_status:
+            result["core_integration"] = core_status
 
         result["status"] = "success" if validation.get("passed") else "failed"
         return result

@@ -219,8 +219,18 @@ fn json_get_string(json: &str, key: &str) -> Option<String> {
     }
 }
 
+// 提取数字字段值（支持负数、小数），直到遇到 , } 或空白
+fn json_get_raw_value(json: &str, key: &str) -> Option<String> {
+    let pattern = format!("\"{}\"", key);
+    let pos = json.find(&pattern)?;
+    let rest = &json[pos + pattern.len()..];
+    let rest = rest.trim_start().trim_start_matches(':').trim_start();
+    let end = rest.find(|c: char| c == ',' || c == '}' || c.is_whitespace())?;
+    Some(rest[..end].to_string())
+}
+
 fn json_get_float(json: &str, key: &str, default: f64) -> f64 {
-    json_get_string(json, key)
+    json_get_raw_value(json, key)
         .and_then(|s| s.parse::<f64>().ok())
         .unwrap_or(default)
 }
