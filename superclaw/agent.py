@@ -402,8 +402,10 @@ class Agent:
         result = AgentResult(content="", tools_used=[], tool_outputs=[])
         max_it = max_iterations or self.max_tool_iterations
 
-        # 工具调用循环 — 类似 nanobot runner
+        # 记录已执行过的工具调用（相同工具+相同参数视为同一调用）
+        executed_calls = set()  # 存储: "tool_name|sorted_args_json"
         roleplay_fix_count = 0  # 防御：角色违规重试计数
+
         for i in range(max_it):
             # 调用 LLM
             llm_output = self.provider.call(messages)
@@ -417,17 +419,13 @@ class Agent:
             if not tool_call:
                 # 没有工具调用 —— 先检查是不是角色自我介绍违规
                 if _looks_like_roleplay(llm_output) and roleplay_fix_count < 2:
-                    # 检测到 LLM 在输出"我是 Agnes / 无法访问内部"等角色扮演
-                    # 不把它当成最终答案，注入错误消息后强制重试
                     roleplay_fix_count += 1
                     warning = (
-                        f"[系统警告 #{roleplay_fix_count}] 检测到你输出了模型自我介绍/角色扮演内容。"
-                        f"请严格遵守 system prompt 的身份定义：你不是任何第三方模型，"
-                        f"而是 superclaw 的本地代码执行工具。请重新回答用户问题：{user_input}"
-                        f" —— 要么调用工具，要么直接用中文回答。"
+                        f"[系统警告 #{roleplay_fix_count}] 禁止输出自我介绍。"
+                        f"你不是任何第三方模型，你是 superclaw 的本地代码执行工具。"
+                        f"请直接回答问题：{user_input} —— 要么调用工具，要么直接回答。"
                     )
                     session.add("assistant", llm_output)
-                    session.add("tool", warning)
                     messages.append({"role": "assistant", "content": llm_output})
                     messages.append({"role": "user", "content": warning})
                     if verbose:
@@ -438,23 +436,47 @@ class Agent:
                 final_answer = llm_output.strip()
                 session.add("assistant", final_answer)
                 result.content = final_answer
-                # ---- session → memory 写入：互联闭环 ----
                 self._write_turn_to_memory(session_key, user_input, final_answer)
                 break
 
             tool_name, tool_args = tool_call
+
+            # 关键修复 #1：未知工具检测
             if not self.tools.has(tool_name):
-                # LLM 请求了不存在的工具
                 error_msg = f"[系统] 未知工具: {tool_name}. 可用工具: {', '.join(self.tools.names)}"
                 session.add("assistant", llm_output)
-                session.add("tool", error_msg)
                 messages.append({"role": "assistant", "content": llm_output})
-                messages.append({"role": "tool", "content": error_msg})
+                messages.append({"role": "user", "content": error_msg})
                 if verbose:
                     print(f"  -> {error_msg}")
                 continue
 
-            # 执行工具
+            # 关键修复 #2：重复调用检测 — 避免 LLM 死循环
+            args_key = json.dumps({k: str(v) for k, v in sorted(tool_args.items())}, ensure_ascii=False)
+            call_signature = f"{tool_name}|{args_key}"
+            if call_signature in executed_calls:
+                # 同一工具同一参数已经执行过，让 LLM 直接总结
+                stop_msg = (
+                    f"[系统] 工具 {tool_name} 已执行，结果已在上面消息中。"
+                    f"请用简洁中文直接回答用户问题：{user_input}"
+                )
+                session.add("assistant", llm_output)
+                messages.append({"role": "assistant", "content": llm_output})
+                messages.append({"role": "user", "content": stop_msg})
+                if verbose:
+                    print(f"  ⏹  检测到重复调用 {tool_name}，强制停止，要求 LLM 总结")
+
+                # 直接让 LLM 做一轮总结回答（不再允许工具调用）
+                final = self.provider.call(messages)
+                final_answer = final.strip()
+                session.add("assistant", final_answer)
+                result.content = final_answer
+                self._write_turn_to_memory(session_key, user_input, final_answer)
+                break
+
+            executed_calls.add(call_signature)
+
+            # 关键修复 #3：执行工具
             if verbose:
                 print(f"  -> 调用工具: {tool_name}({json.dumps(tool_args, ensure_ascii=False)})")
 
@@ -462,26 +484,34 @@ class Agent:
             result.tools_used.append(tool_name)
             result.tool_outputs.append(str(tool_result))
 
-            # 将助手消息和工具结果加入对话
+            # 关键修复 #4：工具结果用 "user" 角色回传（Agnes 不识别 tool 角色）
+            result_text = tool_result.content
+            # 截断过长工具结果（>2000 字），避免消息膨胀
+            if len(result_text) > 2000:
+                result_text = result_text[:2000] + "\n...[已截断，完整内容已读取]"
+
+            tool_response = (
+                f"[工具结果 {tool_name}] {result_text}\n\n"
+                f"（如果你已经有足够信息，就直接用中文回答；否则可以调用其他工具。）"
+            )
             session.add("assistant", llm_output)
-            session.add("tool", f"[{tool_name}] {tool_result.content}")
             messages.append({"role": "assistant", "content": llm_output})
-            messages.append({"role": "tool", "content": tool_result.content})
+            messages.append({"role": "user", "content": tool_response})
 
             if tool_result.error and verbose:
                 print(f"  -> 错误: {tool_result.content[:200]}")
 
         else:
-            # 达到最大迭代但没有得到最终答案 — 让 LLM 总结
+            # 达到最大迭代 — 直接根据已有消息生成总结
             summary_msg = (
-                f"你已经执行了 {max_it} 次工具调用。请根据以上信息，给用户一个简洁的最终回答，不要继续调用工具。"
+                f"[系统] 你已执行 {max_it} 轮，请根据以上对话历史，用简洁中文直接回答问题：{user_input}"
             )
-            messages.append({"role": "system", "content": summary_msg})
+            messages.append({"role": "user", "content": summary_msg})
             final = self.provider.call(messages)
-            session.add("assistant", final.strip())
-            result.content = final.strip()
-            # session → memory 写入
-            self._write_turn_to_memory(session_key, user_input, final.strip())
+            final_answer = final.strip()
+            session.add("assistant", final_answer)
+            result.content = final_answer
+            self._write_turn_to_memory(session_key, user_input, final_answer)
             if verbose:
                 print(f"[总结] {final[:200]}")
 
