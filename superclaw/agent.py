@@ -1,6 +1,17 @@
 """
-superclaw 核心 Agent 循环
-参考 nanobot 的 AgentLoop 设计，极简但功能完整
+superclaw 核心 Agent —— 本地思考 + 本地执行 + LLM 润色 三段式
+
+架构:
+  用户输入 → LocalThinker (关键词/正则识别意图) → memory 检索 (本地 md)
+           → ActionRunner (Agent 自己直接调用工具)
+           → ResultSynthesizer (LLM 只负责语言包装)
+           → 写入 memory/<session>.md
+
+核心变化:
+1. Agent 有自己的"本地脑袋" (规则+关键词+正则) —— 不依赖 LLM 做判断
+2. Agent 自己调用工具 —— 不把决策权外包给 LLM
+3. LLM 只负责最后一步的自然语言包装 —— 不是大脑
+4. 本地 md 知识 (SOUL/MEMORY/README...) 注入上下文
 """
 import json
 import logging
@@ -10,7 +21,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# 统一配置 logging（确保 debug/info 日志可见）
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
@@ -39,61 +49,31 @@ class AgentResult:
     total_time_ms: int = 0
 
 
-# 工具调用模式
-# 支持两种格式：
-# <tool name> <arg=value> ...</tool>
-# {"tool": "name", "args": {"key": "value"}}
-_TOOL_TAG_RE = re.compile(
-    r'<tool\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*>(.*?)</tool>',
-    re.DOTALL
-)
-_ARG_RE = re.compile(r'<(\w+)>(.*?)</\1>', re.DOTALL)
-
-
+# ============ 兼容层: 工具调用解析 / LLM 角色防御 ============
 def _parse_tool_call(text: str) -> Optional[Tuple[str, Dict[str, str]]]:
-    """从文本中解析工具调用。支持多种格式，容忍空白、自然语言包裹。
-
-匹配优先级：
-1. `<tool name> <arg>val</arg> </tool>` XML 风格（推荐）
-2. `{"tool": "name", "args": {...}}`  JSON
-3. `{"name": "tool", "input": {...}}`  JSON（LangChain 风格）
-"""
+    """从文本中解析工具调用 —— 兼容 XML 风格和 JSON 格式"""
     if not text:
         return None
-
     stripped = text.strip()
-
-    # 格式 1: <tool name> <arg>val</arg> </tool>
-    # 兼容：<tool  name> <arg> val </arg> </tool> 以及空白/换行变体
-    m = re.search(r"<tool\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*>.*?</tool>", stripped, re.DOTALL)
+    m = re.search(r"<tool\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*>(.*?)</tool>", stripped, re.DOTALL)
     if m:
         name = m.group(1).strip()
-        body = m.group(0)  # 整个 tool 标签
+        body = m.group(2)
         args = dict(re.findall(r"<(\w+)>(.*?)</\1>", body, re.DOTALL))
         if name:
             return name, args
-
-    # 格式 1b: 宽松的 XML 风格 <name>val</name> 包裹
     m = re.search(r"<([a-zA-Z_][a-zA-Z0-9_]*)>(.*?)</\1>", stripped, re.DOTALL)
-    if m and m.group(1) in ("tool",):
-        body = m.group(2)
-        inner = re.search(r"<([a-zA-Z_][a-zA-Z0-9_]*)>", body)
-        if inner:
-            name = inner.group(1)
-            args = dict(re.findall(r"<(\w+)>(.*?)</\1>", body, re.DOTALL))
-            return name, args
-
-    # 格式 2: JSON {"tool": "name", "args": {...}}
-    # 先尝试整行解析，失败则提取最大的 JSON 对象
+    if m and ("path" in m.group(2) or "cmd" in m.group(2) or "query" in m.group(2)):
+        name = m.group(1)
+        args = dict(re.findall(r"<(\w+)>(.*?)</\1>", m.group(2), re.DOTALL))
+        return name, args
     try:
         data = json.loads(stripped)
         if isinstance(data, dict) and "tool" in data:
-            args = data.get("args", {})
+            args = data.get("args", {}) or {}
             return data["tool"], {k: str(v) for k, v in args.items()}
     except (json.JSONDecodeError, ValueError):
         pass
-
-    # 格式 3: JSON {"name": "tool", "input": {...}}
     try:
         data = json.loads(stripped)
         if isinstance(data, dict) and "name" in data:
@@ -101,8 +81,6 @@ def _parse_tool_call(text: str) -> Optional[Tuple[str, Dict[str, str]]]:
             return data["name"], {k: str(v) for k, v in args.items()}
     except (json.JSONDecodeError, ValueError):
         pass
-
-    # 格式 4: 文本中嵌入的 JSON（LLM 可能输出 "好的，我将调用 { ... }"）
     json_match = re.search(r"\{[^}]*\"(tool|name)\"[^}]*\}", stripped, re.DOTALL)
     if json_match:
         try:
@@ -114,46 +92,26 @@ def _parse_tool_call(text: str) -> Optional[Tuple[str, Dict[str, str]]]:
                     return data["name"], {k: str(v) for k, v in (data.get("input") or {}).items()}
         except (json.JSONDecodeError, ValueError):
             pass
-
     return None
 
 
-# Agent 启动时需要自动加载的核心 MD 文件
-# 这些文件定义了 Agent 的身份与知识体系
-_CORE_MD_FILES: List[str] = [
-    "SOUL.md",
-    "MEMORY.md",
-    "AGENTS.md",
-    "TOOLS.md",
-    "README.md",
-]
-
-# LLM 自我介绍检测关键词 — 命中任一即视为违规输出
-# 精确字符串匹配 + 全小写。只应命中典型的模型自我介绍话术，
-# 不能拦截正常的工具驱动回复（如 "我帮你读取文件..."）
+# LLM 角色防御: 命中任一即视为违规输出
 _ROLEPLAY_TRIGGERS: List[str] = [
-    # Agnes 特定
-    "我是 agnes", "agnes-2.0", "agnes-2", "sapiens ai", "由 sapiens",
-    # 其他模型
+    "我是 agnes", "agnes-2.0", "由 sapiens", "sapiens ai",
     "我是 deepseek", "deepseek 开发", "deepseek-chat",
-    "我是 groq", "groq 开发",
-    "我是 openai", "由 openai 开发",
+    "我是 groq", "groq 开发", "我是 openai", "由 openai 开发",
     "我是 qwen", "我是 glm", "我是 doubao",
-    # 通用"我是 AI"类型的自我介绍 — 注意不要匹配 "我是 superclaw"
     "我是一个人工智能", "作为一个人工智能助手", "作为一个 ai 助手",
-    # "无法访问"类型的拒答话术
-    "我无法查看或访问自己的内部", "无法访问自己的内部系统",
+    "无法查看或访问自己的内部", "无法访问自己的内部系统",
     "我没有权限访问或读取任何外部", "无法访问或读取任何外部",
     "我只能基于训练数据", "只能基于训练数据回答",
-    # 典型的能力清单开头
     "我可以为你提供准确", "可以为你提供准确",
-    "我能帮你解答", "解答各类知识性问题",
-    # 旧版 superclaw 的错误角色
-    "一个具备进化能力的 ai agent",
+    "解答各类知识性问题", "一个具备进化能力的 ai agent",
 ]
 
+
 def _looks_like_roleplay(text: str) -> bool:
-    """检测 LLM 是否在输出角色扮演/自我介绍 —— 真 LLM 才会出现此问题。"""
+    """检测 LLM 是否在输出角色扮演内容"""
     if not text:
         return False
     low = text.lower()
@@ -163,13 +121,376 @@ def _looks_like_roleplay(text: str) -> bool:
     return False
 
 
+# ============ Agent 启动时自动加载的核心 md 文件 ============
+_CORE_MD_FILES: List[str] = ["SOUL.md", "MEMORY.md", "AGENTS.md", "TOOLS.md", "README.md"]
+
+
+# ============ 数据类: 意图 / 行动 ============
+@dataclass
+class Intent:
+    """Agent 本地识别出的用户意图"""
+    type: str
+    targets: List[str] = field(default_factory=list)
+    keywords: List[str] = field(default_factory=list)
+    reasoning: str = ""
+
+
+@dataclass
+class Action:
+    """Agent 决定要执行的一个行动"""
+    tool: str
+    args: Dict[str, str]
+    reason: str
+    result: Optional[str] = None
+
+
+# ============ 本地思考引擎 LocalThinker ============
+class LocalThinker:
+    """Agent 的本地脑袋 —— 用关键词/正则/规则理解用户 + 产生行动列表
+
+    不依赖 LLM。Agent 自己判断用户意图，自己规划工具调用。
+    """
+
+    # 关键词规则库: {意图类型: ([关键词列表], [正则列表])}
+    _KEYWORD_RULES = {
+        "file_read": (
+            ["读", "读取", "读文件", "文件内容", "查看文件", "看看文件",
+             "内容", "内容是啥", "内容是什么", "打开文件", "cat "],
+            [r"[A-Za-z0-9_\-\.\/]+\.(md|py|txt|yaml|yml|json|cfg|ini|toml|log|sh)"]
+        ),
+        "shell": (
+            ["运行", "执行", "跑一下", "shell ", "命令", "python3 ", "python ",
+             "ls ", "目录", "pwd", "当前目录", "哪些文件", "grep ", "列表"],
+            [r"(ls|pwd|cat|python3|python|grep|find|wc|head|tail)\s+.+"]
+        ),
+        "memory": (
+            ["记忆", "查记忆", "检索记忆", "md 知识", "灵魂文件", "知识文件",
+             "反思", "之前聊过", "历史对话", "回顾"],
+            []
+        ),
+        "evolution": (
+            ["进化", "自我进化", "进化循环", "基因", "apex", "evolve"],
+            []
+        ),
+        "chit_chat": (
+            ["你好", "hi", "hello", "嗨", "问好", "再见", "谢谢", "感谢", "不错", "ok"],
+            []
+        ),
+        "code_ask": (
+            ["代码", "函数", "代码分析", "这段代码", "代码解释", "bug",
+             "报错", "错误", "修复", "改进", "重构", "优化"],
+            []
+        ),
+    }
+
+    def __init__(self, workspace: str, tools: ToolRegistry):
+        self.workspace = Path(workspace)
+        self.tools = tools
+
+    def analyze(self, user_input: str) -> Intent:
+        """本地规则识别用户意图"""
+        text = user_input.strip()
+        low = text.lower()
+
+        if self._matches_type(text, low, "file_read"):
+            targets = self._extract_file_targets(text)
+            return Intent(
+                type="file_read",
+                targets=targets or [self._guess_default_file()],
+                keywords=self._extract_keywords(text),
+                reasoning=f"识别到文件读取意图 -> 目标: {targets or [self._guess_default_file()]}",
+            )
+
+        if self._matches_type(text, low, "shell"):
+            return Intent(
+                type="shell",
+                targets=self._extract_shell_cmd(text),
+                keywords=self._extract_keywords(text),
+                reasoning=f"识别到命令执行意图 -> 目标: {self._extract_shell_cmd(text)}",
+            )
+
+        if self._matches_type(text, low, "memory"):
+            return Intent(
+                type="memory",
+                targets=[text],
+                keywords=self._extract_keywords(text),
+                reasoning=f"识别到记忆检索意图 -> 关键词: {self._extract_keywords(text)}",
+            )
+
+        if self._matches_type(text, low, "evolution"):
+            return Intent(
+                type="evolution",
+                targets=["self_evolution"],
+                keywords=["进化"],
+                reasoning="识别到进化/自我改进意图",
+            )
+
+        if self._matches_type(text, low, "chit_chat"):
+            return Intent(type="chit_chat", targets=[], keywords=[],
+                         reasoning="纯闲聊问候 —— 直接友好回应")
+
+        if self._matches_type(text, low, "code_ask"):
+            targets = self._extract_file_targets(text) or self._find_code_files()
+            return Intent(
+                type="code_ask",
+                targets=targets,
+                keywords=self._extract_keywords(text),
+                reasoning=f"代码/问题分析意图 -> 可能需要先读: {targets[:3]}",
+            )
+
+        return Intent(
+            type="unknown",
+            targets=[],
+            keywords=self._extract_keywords(text),
+            reasoning="未明确命中工具类型 —— 尝试从本地 md 知识文件找相关内容",
+        )
+
+    def _matches_type(self, text: str, low: str, intent_type: str) -> bool:
+        keywords, regexes = self._KEYWORD_RULES[intent_type]
+        for kw in keywords:
+            if kw.lower() in low:
+                return True
+        for pattern in regexes:
+            if re.search(pattern, text):
+                return True
+        return False
+
+    def _extract_keywords(self, text: str) -> List[str]:
+        """提取中文2+字连续词 + 英文标识符"""
+        zh_words = re.findall(r"[\u4e00-\u9fa5]{2,}", text)
+        en_words = re.findall(r"[a-zA-Z_][a-zA-Z0-9_\-]{2,}", text)
+        return list(dict.fromkeys(zh_words + en_words))[:8]
+
+    def _extract_file_targets(self, text: str) -> List[str]:
+        """从用户输入提取文件名（匹配常见扩展名）"""
+        files = re.findall(r"[A-Za-z0-9_\-\./]+\.[A-Za-z0-9]{2,}", text)
+        quoted = re.findall(r"[\"']([A-Za-z0-9_\-\./]+?)[\"']", text)
+        all_files = list(dict.fromkeys(files + quoted))
+        return [f for f in all_files if not f.startswith("python") and not f.startswith("shell")]
+
+    def _extract_shell_cmd(self, text: str) -> List[str]:
+        """从用户输入提取要执行的 shell 命令"""
+        for pattern in [r"(python3?[\s-]+[A-Za-z0-9_\-\./]+)",
+                        r"(ls[\s\-]+[A-Za-z0-9_\./]+)",
+                        r"(cat[\s]+[A-Za-z0-9_\./]+)"]:
+            m = re.search(pattern, text)
+            if m:
+                return [m.group(1)]
+        if "目录" in text or "当前目录" in text:
+            return ["ls -la"]
+        if "python" in text.lower():
+            return ["python3 --version"]
+        return ["ls -la"]
+
+    def _guess_default_file(self) -> str:
+        """用户没指定文件时，猜一个最相关的本地 md 文件"""
+        for name in ["README.md", "SOUL.md", "MEMORY.md"]:
+            if (self.workspace / name).exists():
+                return name
+        return "README.md"
+
+    def _find_code_files(self) -> List[str]:
+        """查找工作区的 Python 代码文件"""
+        results = []
+        try:
+            for p in sorted(self.workspace.glob("*.py")):
+                results.append(str(p.name))
+                if len(results) >= 5:
+                    break
+        except Exception:
+            pass
+        return results or ["README.md"]
+
+    def plan_actions(self, intent: Intent) -> List[Action]:
+        """Agent 自己规划要执行哪些工具 —— 本地规则"""
+        if intent.type == "file_read":
+            actions: List[Action] = []
+            for target in intent.targets[:3]:
+                resolved = self._resolve_path(target)
+                actions.append(Action(
+                    tool="file_read", args={"path": resolved},
+                    reason=f"Agent 本地识别到文件读取意图 -> 读取 {resolved}",
+                ))
+            return actions
+
+        if intent.type == "shell":
+            return [Action(
+                tool="shell",
+                args={"cmd": intent.targets[0] if intent.targets else "ls -la"},
+                reason="Agent 本地识别到命令执行意图",
+            )]
+
+        if intent.type == "memory":
+            return [Action(
+                tool="memory",
+                args={"query": " ".join(intent.keywords[:5]) if intent.keywords else "知识"},
+                reason="Agent 本地识别到记忆检索意图",
+            )]
+
+        if intent.type == "code_ask":
+            actions = []
+            for target in intent.targets[:3]:
+                resolved = self._resolve_path(target)
+                actions.append(Action(
+                    tool="file_read", args={"path": resolved},
+                    reason=f"代码分析意图 —— Agent 自动读取 {resolved}",
+                ))
+            if intent.keywords and self.tools.has("memory"):
+                actions.append(Action(
+                    tool="memory", args={"query": " ".join(intent.keywords[:5])},
+                    reason="Agent 同时检查记忆系统",
+                ))
+            return actions
+
+        if intent.type == "chit_chat":
+            return []
+
+        # unknown 类型: 尝试查记忆 + 读 README
+        unknown_actions: List[Action] = []
+        if self.tools.has("memory") and intent.keywords:
+            unknown_actions.append(Action(
+                tool="memory",
+                args={"query": " ".join(intent.keywords[:5])},
+                reason="Agent 无法明确识别意图 -> 尝试从本地 md 知识检索",
+            ))
+        readme = self._resolve_path("README.md")
+        if (self.workspace / readme).exists():
+            unknown_actions.append(Action(
+                tool="file_read", args={"path": readme},
+                reason="Agent 读取 README 以获取项目上下文",
+            ))
+        return unknown_actions
+
+    def _resolve_path(self, target: str) -> str:
+        """把相对路径标准化"""
+        target = target.strip().strip("'\"")
+        if target.startswith("/"):
+            return target
+        if (self.workspace / target).exists():
+            return target
+        for sub in ["", "superclaw", "src"]:
+            candidate = (self.workspace / sub / target) if sub else (self.workspace / target)
+            if candidate.exists():
+                try:
+                    return str(candidate.relative_to(self.workspace))
+                except ValueError:
+                    return target
+        return target
+
+
+# ============ 行动执行引擎 ActionRunner ============
+class ActionRunner:
+    """Agent 自己调用工具 —— 不经过 LLM
+
+    负责: 实际调用工具 + 收集结果 + 基本容错
+    """
+
+    def __init__(self, tools: ToolRegistry):
+        self.tools = tools
+
+    def execute(self, actions: List[Action]) -> Tuple[List[Action], List[str]]:
+        """顺序执行行动列表，返回 (已执行带结果的行动, 错误列表)"""
+        errors: List[str] = []
+        executed: List[Action] = []
+        for action in actions:
+            if not self.tools.has(action.tool):
+                errors.append(f"工具 {action.tool} 不存在")
+                continue
+            try:
+                tool_result = self.tools.call(action.tool, **action.args)
+                action.result = str(tool_result.content)
+                executed.append(action)
+            except Exception as e:
+                errors.append(f"{action.tool} 调用失败: {e}")
+                action.result = f"[错误] {e}"
+                executed.append(action)
+        return executed, errors
+
+
+# ============ 结果合成器 ResultSynthesizer ============
+class ResultSynthesizer:
+    """把 Agent 本地推理 + 工具结果包装成自然语言回答
+
+    LLM 只负责语言美化 —— 决策权不在 LLM
+    """
+
+    def __init__(self, provider: BaseProvider, system_prompt: str):
+        self.provider = provider
+        self.system_prompt = system_prompt
+
+    def synthesize(self, intent: Intent, actions: List[Action],
+                    user_input: str, local_memory_hint: str = "") -> str:
+        """本地推理 + 工具结果 → LLM 自然语言润色"""
+        # 情况 1: 纯闲聊
+        if intent.type == "chit_chat":
+            msg = [
+                {"role": "system", "content": self.system_prompt + "\n\n用简洁中文回答用户。"},
+                {"role": "user", "content": user_input},
+            ]
+            try:
+                return self.provider.call(msg).strip() or "你好！有什么需要我做的？"
+            except Exception:
+                return "你好！有什么需要我帮你做的？"
+
+        # 情况 2: 没有任何工具也没有检索到记忆
+        if not actions and not local_memory_hint:
+            msg = [
+                {"role": "system", "content": self.system_prompt + "\n\n用简洁中文回答用户问题。"},
+                {"role": "user", "content": user_input},
+            ]
+            try:
+                return self.provider.call(msg).strip() or "嗯，我需要更多信息才能回答这个问题。"
+            except Exception:
+                return f"我理解了你的问题（意图: {intent.type}），但当前无工具可用。你可以指定具体文件名或命令。"
+
+        # 情况 3: 有工具结果 / 有记忆 —— LLM 语言润色
+        reasoning_text = f"意图: {intent.type} — {intent.reasoning}"
+        actions_text = []
+        for i, act in enumerate(actions):
+            result_preview = (act.result or "")[:800]
+            if len(str(act.result or "")) > 800:
+                result_preview += "...[已截断]"
+            actions_text.append(
+                f"[{i+1}] 工具: {act.tool} 参数: {json.dumps(act.args, ensure_ascii=False)}\n"
+                f"  原因: {act.reason}\n  结果: {result_preview}"
+            )
+
+        summary_prompt = (
+            f"{self.system_prompt}\n\n"
+            f"【任务】把以下 Agent 的推理过程和工具执行结果，用简洁中文总结成对用户问题的自然回答。\n\n"
+            f"【用户问题】{user_input}\n\n"
+            f"【Agent 推理过程】{reasoning_text}\n\n"
+        )
+        if local_memory_hint:
+            summary_prompt += f"【本地 md 知识检索】{local_memory_hint}\n\n"
+        if actions_text:
+            summary_prompt += "\n\n".join(actions_text) + "\n\n"
+        summary_prompt += "【你的回答】用简洁中文直接给用户结论或总结 —— 不要重复上面的格式，不要输出任何工具调用标签。"
+
+        try:
+            reply = self.provider.call([{"role": "user", "content": summary_prompt}])
+            cleaned = re.sub(r"<tool[^>]*>.*?</tool>", "", reply, flags=re.DOTALL).strip()
+            return cleaned or "（工具已执行，但 LLM 未返回可读总结）"
+        except Exception as e:
+            # LLM 失败时 Agent 自己兜底
+            lines = [reasoning_text]
+            for act in actions:
+                preview = (act.result or "")[:300]
+                lines.append(f"[{act.tool}] {preview}")
+            lines.append(f"[提示] LLM 调用失败: {e} —— 以上为 Agent 本地推理与工具执行结果")
+            return "\n".join(lines)
+
+
+# ============ 主 Agent 类: 三段式循环 ============
 class Agent:
-    """superclaw 核心 Agent
-    - 可配置 LLM Provider
-    - 工具调用循环（LLM -> 工具 -> LLM 迭代）
-    - 会话记忆（短期）
-    - MD 知识体系（长期记忆）：启动自动加载 SOUL/MEMORY/AGENTS/TOOLS 等
-    - 每轮对话前自动做 memory 检索，让 LLm 用已有知识作答
+    """superclaw 核心 Agent —— 三段式循环
+
+    流程:
+    1. LocalThinker 本地推理 —— 关键词/规则识别意图
+    2. ActionRunner 本地执行 —— Agent 自己读文件/执行命令
+    3. ResultSynthesizer LLM 润色 —— LLM 只负责语言包装
+
+    不再是 LLM 转发器: 决策权在 Agent 本地规则，LLM 只负责语言。
     """
 
     def __init__(
@@ -184,7 +505,7 @@ class Agent:
         self.provider = provider or get_provider(self.cfg.llm)
         self.tools = tools or build_default_tools(
             self.cfg.workspace,
-            shell=self.cfg.tools.shell,  # nosec B604 - 传给 build_default_tools 的布尔开关，非 subprocess 调用
+            shell=self.cfg.tools.shell,  # nosec B604
             file_tools=self.cfg.tools.file,
             web=self.cfg.tools.web,
             think=self.cfg.tools.think,
@@ -196,75 +517,49 @@ class Agent:
         self.system_prompt = SYSTEM_PROMPT
         self.max_tool_iterations = self.cfg.tools.max_tool_iterations
         self.loaded_skills: List[str] = []
-
-        # ---- 用户反馈学习（可选）----
         self.feedback_learner = feedback_learner
 
-        # --- 记忆系统互联 ---
-        # 用 tools._workspace 初始化 MemoryStore（避免循环 import）
-        self._memory_store = None
-        try:
-            from .memory import MemoryStore
-            self._memory_store = MemoryStore(Path(self.tools._workspace))
-        except Exception:
-            self._memory_store = None
+        # 子引擎
+        self.thinker = LocalThinker(self.tools._workspace, self.tools)
+        self.runner = ActionRunner(self.tools)
+        self.synthesizer = ResultSynthesizer(self.provider, self.system_prompt)
 
-        # 启动加载核心 MD → 注入 system prompt
+        # 启动加载核心 md 知识注入上下文
         self._loaded_core_md: List[str] = []
         self._autoload_core_md()
-
-        # 自动扫描并加载 skills 目录
         self._autoload_skills()
 
-    # ---- 核心 MD 文件自动加载 ----
     def _autoload_core_md(self) -> None:
-        """启动时读取 core MD 文件（SOUL/MEMORY/AGENTS/TOOLS）并注入 system prompt。
-        让 LLM 从一开始就知道自己的身份与知识体系，而不是凭空自我介绍。"""
+        """启动时读取 core md 文件并注入 system prompt"""
         ws = Path(self.tools._workspace)
         if not ws.exists():
             return
-
-        found_blocks: List[str] = []
+        blocks: List[str] = []
         for fname in _CORE_MD_FILES:
             fpath = ws / fname
             if fpath.exists() and fpath.is_file():
                 try:
                     text = fpath.read_text(encoding="utf-8", errors="ignore").strip()
-                    if text:
-                        # 截断过长内容，避免 system prompt 爆炸
-                        max_chars = 2000
-                        preview = text[:max_chars]
-                        if len(text) > max_chars:
-                            preview += "\n...[已截断，完整内容可用 memory_read 工具读取]"
-                        title = fname
-                        for line in text.splitlines()[:1]:
-                            if line.startswith("#"):
-                                candidate = line.lstrip("#").strip()
-                                if candidate:
-                                    title = candidate
-                                break
-                        found_blocks.append(
-                            f"## 知识文件: {fname} ({title})\n{preview}"
-                        )
-                        self._loaded_core_md.append(fname)
+                    if not text:
+                        continue
+                    preview = text[:1500]
+                    if len(text) > 1500:
+                        preview += "\n...[已截断]"
+                    blocks.append(f"## {fname}\n{preview}")
+                    self._loaded_core_md.append(fname)
                 except Exception:
                     continue
-
-        if found_blocks:
-            # 将核心 MD 拼接到 system prompt 尾部（在 tool 说明之前）
-            joined = "\n\n".join(found_blocks)
+        if blocks:
+            joined = "\n\n".join(blocks)
             self.system_prompt = (
-                f"{self.system_prompt}\n\n===== 你的本地知识体系（只读，用于回答问题）=====\n"
-                f"{joined}\n"
-                f"===== 本地知识结束。需要更多细节可调用 memory 工具检索 =====\n"
+                f"{self.system_prompt}\n\n===== 你的本地身份与知识体系 =====\n{joined}\n===== 结束 =====\n"
             )
+            self.synthesizer.system_prompt = self.system_prompt
 
     def _autoload_skills(self) -> None:
-        """自动扫描 skills 目录并加载所有 .md skill 文件"""
         skills_dir = Path(self.cfg.workspace) / "skills"
         if not skills_dir.exists():
             return
-
         skills = scan_skills(skills_dir)
         for skill in skills:
             if self.add_skill(skill["path"]):
@@ -272,14 +567,9 @@ class Agent:
 
     def set_system_prompt(self, prompt: str) -> None:
         self.system_prompt = prompt
+        self.synthesizer.system_prompt = prompt
 
     def add_skill(self, skill_file: str) -> bool:
-        """加载一个 Markdown Skill 文件
-        Skill 文件格式：
-        # Skill Name
-        - 触发词: 关键词1, 关键词2
-        - 系统提示: <要加入 system prompt 的内容>
-        """
         path = Path(skill_file)
         if not path.exists():
             return False
@@ -287,25 +577,17 @@ class Agent:
             md = path.read_text(encoding="utf-8")
         except Exception:
             return False
-
-        # 简单解析：提取标题和正文
         lines = md.strip().splitlines()
         if not lines:
             return False
-
         title = lines[0].lstrip("#").strip()
         body = "\n".join(lines[1:]).strip()
-
-        # 将 skill 内容附加到 system prompt
-        self.system_prompt = (
-            f"{self.system_prompt}\n\n## Skill: {title}\n{body}"
-        )
+        self.system_prompt = f"{self.system_prompt}\n\n## Skill: {title}\n{body}"
+        self.synthesizer.system_prompt = self.system_prompt
         return True
 
-    # ---- 每轮对话前：memory 检索 + 对话写入记忆 ----
     def _retrieve_relevant_memory(self, user_input: str) -> Optional[str]:
-        """用用户输入检索本地 md 知识/反思，返回简短摘要。
-        失败或无匹配返回 None，不阻塞主流程。"""
+        """用户输入检索本地 md 知识/反思"""
         if not self.tools.has("memory"):
             return None
         try:
@@ -313,16 +595,9 @@ class Agent:
             content = getattr(result, "content", str(result))
             if not content:
                 return None
-            # 无命中信号："未找到 xxx 相关知识"（检索失败） / "暂无 xxx"（无反思记录）
-            # 这些内容不应该注入消息，避免 LLM 被误引导
-            has_real_result = True
-            stripped = content.strip()
-            # 单行的"未找到"提示视为无结果
-            if "未找到" in stripped and "相关" in stripped and len(stripped) < 200:
-                has_real_result = False
-            if ("暂无" in stripped or "无相关" in stripped) and len(stripped) < 200:
-                has_real_result = False
-            if not has_real_result:
+            if "未找到" in content and len(content) < 200:
+                return None
+            if "暂无" in content and len(content) < 200:
                 return None
             snippet = content[:600]
             if len(content) > 600:
@@ -333,8 +608,7 @@ class Agent:
 
     def _write_turn_to_memory(self, session_key: str,
                               user_input: str, assistant_reply: str) -> None:
-        """将本轮对话写入记忆系统：在 memory/<session_key>.md 追加一条日记。
-        实现 session ↔ memory 的真实互联。"""
+        """对话结束后写入 memory/<session>.md"""
         try:
             ws = Path(self.tools._workspace)
             mem_dir = ws / "memory"
@@ -342,206 +616,263 @@ class Agent:
             log_file = mem_dir / f"{session_key}.md"
             from datetime import datetime
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            entry = (
-                f"\n### 对话记录 @ {ts}\n"
-                f"- 用户: {user_input[:400]}\n"
-                f"- 助手: {str(assistant_reply)[:400]}\n"
-            )
+            entry = f"\n### 对话 @ {ts}\n- Q: {user_input[:400]}\n- A: {str(assistant_reply)[:400]}\n"
             with open(log_file, "a", encoding="utf-8") as f:
                 f.write(entry)
         except Exception:
             pass
 
-    def run(self, user_input: str, session_key: str = "default",
-            *, verbose: bool = False, max_iterations: Optional[int] = None) -> AgentResult:
-        """处理用户输入，运行 Agent 循环
-        流程（参考 nanobot）:
-        1. 反馈学习检测
-        2. memory 检索 → 注入消息（让 LLM 用本地 md 知识作答）
-        3. user_input → LLM 决定是否调用工具
-        4. 工具调用迭代（think + 实际工具）
-        5. 对话写入 memory 实现长期记忆
-        6. 返回总结后的自然语言答案
+    # ============ 回退路径: 旧的 LLM 驱动工具调用循环 ============
+    def _llm_driven_tool_loop(self, user_input: str, session: "Session",
+                               result: "AgentResult", *, verbose: bool,
+                               max_iter: int) -> str:
+        """旧的工具调用循环 —— 本地无法识别意图时使用
+
+        LLM 输出 <tool xxx></tool> → Agent 调用 → 结果喂回 LLM → 直到 LLM 给自然语言
         """
-        t0 = time.time()
+        iteration = 0
+        tool_context: List[str] = []
+        last_assistant_message = user_input  # 记录上一个助手消息以避免重复调用同一工具
+        while iteration < max_iter:
+            iteration += 1  # 每次进入循环 = 调用一次 LLM = 一轮
+            messages: List[Dict[str, str]] = [
+                {"role": "system", "content": self.system_prompt + self.tools.to_llm_instructions()},
+            ]
+            for msg in session.messages:
+                messages.append({"role": msg["role"], "content": msg["content"]})
 
-        if not user_input.strip():
-            return AgentResult(content="你说什么？")
-
-        # ---- 用户反馈采集（可选）----
-        if self.feedback_learner is not None:
             try:
-                self.feedback_learner.detect_and_record(
-                    user_input, session_id=session_key,
-                )
-            except Exception:
-                pass  # 反馈采集失败不阻断主流程
+                response = self.provider.call(messages)
+            except Exception as e:
+                if iteration == 1:
+                    return f"LLM 调用失败: {e}"
+                return "（LLM 调用失败，以下为已收集的工具结果）\n" + "\n".join(tool_context)
 
-        # ---- 第一步：memory 检索（session ↔ memory 互联）----
-        memory_hint = ""
-        memory_snippet = self._retrieve_relevant_memory(user_input)
-        if memory_snippet:
-            memory_hint = (
-                "\n\n===== 从本地 md 知识体系检索到的相关内容（用于回答）=====\n"
-                f"{memory_snippet}\n"
-                "===== 检索结束。优先基于以上内容回答，需要更多细节可调用 memory 工具 =====\n"
-            )
+            response_text = str(response).strip()
+            if not response_text:
+                return "（LLM 返回空响应）"
 
-        # 获取会话
-        session = self.sessions.get(session_key)
-        session.add("user", user_input)
+            tool_calls_raw = _parse_tool_call(response_text)
 
-        # 构建消息：system prompt + 本地知识注入 + tool 说明
-        tool_hint = ""
-        if self.tools.names:
-            tool_hint = "\n\n" + self.tools.to_llm_instructions()
+            if tool_calls_raw is None:
+                # LLM 没有调用工具 —— 要么是最终答案，要么是角色介绍
+                result.iterations = iteration
+                if _looks_like_roleplay(response_text):
+                    if tool_context:
+                        lines = ["【Agent 直接返回工具结果（LLM 角色违规）】"] + tool_context
+                        return "\n".join(lines)
+                    session.add("assistant", "请直接回答用户问题，不要自我介绍")
+                    continue
+                return response_text
 
-        system_prompt = self.system_prompt + memory_hint + tool_hint
-        messages = session.to_messages(system_prompt)
-
-        result = AgentResult(content="", tools_used=[], tool_outputs=[])
-        max_it = max_iterations or self.max_tool_iterations
-
-        # 记录已执行过的工具调用（相同工具+相同参数视为同一调用）
-        executed_calls = set()  # 存储: "tool_name|sorted_args_json"
-        roleplay_fix_count = 0  # 防御：角色违规重试计数
-
-        for i in range(max_it):
-            # 调用 LLM
-            llm_output = self.provider.call(messages)
-            result.iterations = i + 1
+            # _parse_tool_call 返回 (name, args) 元组 —— 转成统一的 list[dict] 格式
+            tool_calls: List[Dict[str, Any]] = [{
+                "tool": tool_calls_raw[0],
+                "args": tool_calls_raw[1] or {},
+            }]
 
             if verbose:
-                print(f"[turn {i+1}] LLM: {llm_output[:200]}")
+                print(f"  [turn {iteration}] LLM 调用工具: "
+                      f"{', '.join(tc['tool'] for tc in tool_calls)}")
 
-            # 检查是否有工具调用
-            tool_call = _parse_tool_call(llm_output)
-            if not tool_call:
-                # 没有工具调用 —— 先检查是不是角色自我介绍违规
-                if _looks_like_roleplay(llm_output) and roleplay_fix_count < 2:
-                    roleplay_fix_count += 1
-                    warning = (
-                        f"[系统警告 #{roleplay_fix_count}] 禁止输出自我介绍。"
-                        f"你不是任何第三方模型，你是 superclaw 的本地代码执行工具。"
-                        f"请直接回答问题：{user_input} —— 要么调用工具，要么直接回答。"
-                    )
-                    session.add("assistant", llm_output)
-                    messages.append({"role": "assistant", "content": llm_output})
-                    messages.append({"role": "user", "content": warning})
+            # 检查重复调用：如果这一轮的工具调用集合与上一轮完全相同，视为死循环
+            this_call_set = tuple(sorted((tc["tool"], json.dumps(tc.get("args", {}), sort_keys=True))
+                                          for tc in tool_calls))
+            if last_assistant_message == this_call_set:
+                if verbose:
+                    print("  [turn {}] 检测到重复工具调用，停止循环".format(iteration))
+                break
+            last_assistant_message = this_call_set  # type: ignore[assignment]
+
+            tool_results_for_llm: List[str] = []
+            tool_results_for_user: List[str] = []
+
+            for tc in tool_calls:
+                tool_name = tc["tool"]
+                tool_args = tc.get("args", {}) or {}
+
+                if not self.tools.has(tool_name):
+                    err = f"未知工具: {tool_name}"
                     if verbose:
-                        print(f"  ✋ 检测到角色违规，强制重试 #{roleplay_fix_count}")
+                        print(f"    {err}")
+                    tool_results_for_llm.append(f"[错误] {err}")
+                    tool_results_for_user.append(f"[错误] {err}")
                     continue
 
-                # 正常的最终答案
-                final_answer = llm_output.strip()
-                session.add("assistant", final_answer)
-                result.content = final_answer
-                self._write_turn_to_memory(session_key, user_input, final_answer)
-                break
-
-            tool_name, tool_args = tool_call
-
-            # 关键修复 #1：未知工具检测
-            if not self.tools.has(tool_name):
-                error_msg = f"[系统] 未知工具: {tool_name}. 可用工具: {', '.join(self.tools.names)}"
-                session.add("assistant", llm_output)
-                messages.append({"role": "assistant", "content": llm_output})
-                messages.append({"role": "user", "content": error_msg})
                 if verbose:
-                    print(f"  -> {error_msg}")
-                continue
+                    args_preview = json.dumps(tool_args, ensure_ascii=False)[:80]
+                    print(f"    -> 调用 {tool_name}({args_preview})")
 
-            # 关键修复 #2：重复调用检测 — 避免 LLM 死循环
-            args_key = json.dumps({k: str(v) for k, v in sorted(tool_args.items())}, ensure_ascii=False)
-            call_signature = f"{tool_name}|{args_key}"
-            if call_signature in executed_calls:
-                # 同一工具同一参数已经执行过，让 LLM 直接总结
-                stop_msg = (
-                    f"[系统] 工具 {tool_name} 已执行，结果已在上面消息中。"
-                    f"请用简洁中文直接回答用户问题：{user_input}"
-                )
-                session.add("assistant", llm_output)
-                messages.append({"role": "assistant", "content": llm_output})
-                messages.append({"role": "user", "content": stop_msg})
-                if verbose:
-                    print(f"  ⏹  检测到重复调用 {tool_name}，强制停止，要求 LLM 总结")
+                try:
+                    tool_result = self.tools.call(tool_name, **tool_args)
+                    result_content = str(tool_result.content) if hasattr(tool_result, "content") else str(tool_result)
+                    preview = result_content[:500]
+                    if len(result_content) > 500:
+                        preview += f"\n...[共 {len(result_content)} 字符，已截断]"
+                    tool_results_for_llm.append(f"[工具结果: {tool_name}]\n{preview}")
+                    tool_results_for_user.append(preview)
+                    result.tools_used.append(tool_name)
+                    result.tool_outputs.append(result_content)
+                except Exception as e:
+                    err_msg = f"调用 {tool_name} 时出错: {e}"
+                    if verbose:
+                        print(f"    [错误] {err_msg}")
+                    tool_results_for_llm.append(f"[错误] {err_msg}")
+                    tool_results_for_user.append(f"[错误] {err_msg}")
 
-                # 直接让 LLM 做一轮总结回答（不再允许工具调用）
-                final = self.provider.call(messages)
-                final_answer = final.strip()
-                session.add("assistant", final_answer)
-                result.content = final_answer
-                self._write_turn_to_memory(session_key, user_input, final_answer)
-                break
-
-            executed_calls.add(call_signature)
-
-            # 关键修复 #3：执行工具
-            if verbose:
-                print(f"  -> 调用工具: {tool_name}({json.dumps(tool_args, ensure_ascii=False)})")
-
-            tool_result = self.tools.call(tool_name, **tool_args)
-            result.tools_used.append(tool_name)
-            result.tool_outputs.append(str(tool_result))
-
-            # 关键修复 #4：工具结果用 "user" 角色回传（Agnes 不识别 tool 角色）
-            result_text = tool_result.content
-            # 截断过长工具结果（>2000 字），避免消息膨胀
-            if len(result_text) > 2000:
-                result_text = result_text[:2000] + "\n...[已截断，完整内容已读取]"
-
-            tool_response = (
-                f"[工具结果 {tool_name}] {result_text}\n\n"
-                f"（如果你已经有足够信息，就直接用中文回答；否则可以调用其他工具。）"
+            tool_context.append(
+                f"[turn {iteration}] {', '.join(tc['tool'] for tc in tool_calls)} -> "
+                + "; ".join(t[:120] for t in tool_results_for_user)
             )
-            session.add("assistant", llm_output)
-            messages.append({"role": "assistant", "content": llm_output})
-            messages.append({"role": "user", "content": tool_response})
 
-            if tool_result.error and verbose:
-                print(f"  -> 错误: {tool_result.content[:200]}")
+            tool_response = "\n".join(tool_results_for_llm)
+            session.add("assistant", response_text)
+            session.add("user", tool_response)
+            result.iterations = iteration
+
+            if verbose:
+                for line in tool_response.splitlines()[:3]:
+                    print(f"    {line[:100]}")
+                if len(tool_response.splitlines()) > 3:
+                    print(f"    ...(共 {len(tool_response.splitlines())} 行)")
+
+        # 超过最大迭代次数 —— 让 LLM 总结
+        if iteration >= max_iter:
+            if verbose:
+                print(f"  已达最大迭代次数 {max_iter}，请 LLM 总结")
+            messages = [
+                {"role": "system", "content": self.system_prompt},
+            ]
+            for msg in session.messages:
+                messages.append({"role": msg["role"], "content": msg["content"]})
+            messages.append({
+                "role": "user",
+                "content": (
+                    f"已经调用了 {iteration} 次工具，请基于工具结果直接用中文自然语言回答我。"
+                    "不要再调用工具了。"
+                ),
+            })
+            try:
+                response = self.provider.call(messages)
+                result.iterations = max_iter  # 总结轮不计入 iterations
+                return str(response)
+            except Exception:
+                lines = [f"已调用 {iteration} 次工具，以下为结果："] + tool_context
+                return "\n".join(lines)
+
+        return "\n".join(tool_context)
+
+    def run(self, user_input: str, session_key: str = "default",
+            *, verbose: bool = False, max_iterations: Optional[int] = None) -> AgentResult:
+        """混合模式处理:
+        1. 本地能明确识别意图 → 三段式（本地思考→执行→LLM润色）✨ 新架构
+        2. 本地无法明确识别 → 回退到 LLM 驱动工具调用循环 🔄 兼容模式
+        """
+        t0 = time.time()
+        if not user_input.strip():
+            return AgentResult(content="你说什么？")
+        if self.feedback_learner is not None:
+            try:
+                self.feedback_learner.detect_and_record(user_input, session_id=session_key)
+            except Exception:
+                pass
+
+        session = self.sessions.get(session_key)
+        session.add("user", user_input)
+        result = AgentResult(content="", tools_used=[], tool_outputs=[])
+        max_iter = max_iterations if max_iterations is not None else self.max_tool_iterations
+
+        # 阶段 1: Agent 本地思考 —— 快速识别
+        intent = self.thinker.analyze(user_input)
+        if verbose:
+            print(f"[本地思考] 意图: {intent.type} — {intent.reasoning}")
+
+        # 阶段 2: Agent 本地查记忆
+        memory_snippet = self._retrieve_relevant_memory(user_input)
+        if verbose:
+            if memory_snippet:
+                print(f"[本地思考] 记忆检索命中: {memory_snippet[:80]}...")
+            else:
+                print(f"[本地思考] 记忆检索: 未命中")
+
+        # 判断走哪条路径
+        # 本地能明确识别：有具体文件/具体命令/具体目标
+        # 回退到 LLM：unknown 类型 + 本地行动列表为空
+        actions = self.thinker.plan_actions(intent)
+        use_local = intent.type in ("file_read", "shell", "web_read", "chit_chat", "memory_query", "list_tools")
+
+        if use_local and actions:
+            # ============ 路径 A: 三段式（新架构） ============
+            if verbose:
+                for act in actions:
+                    print(f"[本地思考] -> 行动: {act.tool}({json.dumps(act.args, ensure_ascii=False)}) — {act.reason}")
+
+            executed, _errors = self.runner.execute(actions)
+            for act in executed:
+                result.tools_used.append(act.tool)
+                result.tool_outputs.append(str(act.result))
+            result.iterations = len(executed)
+            if verbose:
+                for act in executed:
+                    r = (act.result or "")[:120].replace("\n", " ")
+                    print(f"[执行] {act.tool} -> {r}")
+
+            final_answer = self.synthesizer.synthesize(
+                intent=intent,
+                actions=executed,
+                user_input=user_input,
+                local_memory_hint=memory_snippet or "",
+            )
+
+            if _looks_like_roleplay(final_answer) and any(executed):
+                lines = [f"【Agent 本地推理】意图: {intent.type} — {intent.reasoning}"]
+                for act in executed:
+                    preview = (act.result or "")[:400]
+                    lines.append(f"[{act.tool}] {preview}")
+                lines.append("\n[提示] LLM 在语言总结环节又自我介绍了，Agent 直接返回本地推理结果。")
+                final_answer = "\n".join(lines)
 
         else:
-            # 达到最大迭代 — 直接根据已有消息生成总结
-            summary_msg = (
-                f"[系统] 你已执行 {max_it} 轮，请根据以上对话历史，用简洁中文直接回答问题：{user_input}"
-            )
-            messages.append({"role": "user", "content": summary_msg})
-            final = self.provider.call(messages)
-            final_answer = final.strip()
-            session.add("assistant", final_answer)
-            result.content = final_answer
-            self._write_turn_to_memory(session_key, user_input, final_answer)
+            # ============ 路径 B: 回退 —— LLM 驱动工具调用循环 ============
             if verbose:
-                print(f"[总结] {final[:200]}")
+                print(f"[本地思考] -> 本地无法明确识别，回退到 LLM 驱动工具循环")
+            final_answer = self._llm_driven_tool_loop(
+                user_input, session, result, verbose=verbose, max_iter=max_iter
+            )
 
-        # 保存会话
+        # 写入会话 + 写入记忆
+        session.add("assistant", final_answer)
+        result.content = final_answer
+        self._write_turn_to_memory(session_key, user_input, final_answer)
         self.sessions.save(session_key)
-
         result.total_time_ms = int((time.time() - t0) * 1000)
         return result
 
     def chat(self, session_key: str = "default") -> None:
-        """交互式对话模式"""
-        print(f"🦖 superclaw v{__import__('superclaw').__version__}")
+        """交互式对话模式 —— 与之前保持兼容"""
+        ver = __import__("superclaw").__version__
+        print(f"superclaw v{ver}")
         print(f"Provider: {self.cfg.llm.provider} | Model: {self.cfg.llm.model}")
+        if self._loaded_core_md:
+            print(f"已加载本地 md 知识: {', '.join(self._loaded_core_md)}")
         if self.loaded_skills:
             print(f"已加载 Skills: {len(self.loaded_skills)} 个")
-        print("输入 'exit' 或 Ctrl+C 退出。")
-        print("命令: /clear 清会话 | /tools 看工具 | /skills 看技能 | /memory 查记忆 | /skill <file> 加载 skill\n")
+        print("流程: 本地思考 -> 本地执行工具 -> LLM 润色")
+        print("输入 exit 或 Ctrl+C 退出。")
+        print("命令: /clear 清会话 | /tools 看工具 | /skills 看技能 | /memory 查记忆 | /think 切换推理过程显示\n")
 
+        verbose_chat = False
         while True:
             try:
                 user_input = input("你: ").strip()
             except (EOFError, KeyboardInterrupt):
                 print()
                 break
-
             if user_input in ("exit", "quit", "q"):
                 break
             elif user_input == "/clear":
                 self.sessions.clear(session_key)
-                print("  ✓ 会话已清除")
+                print("  会话已清除")
                 continue
             elif user_input == "/tools":
                 for name in self.tools.names:
@@ -551,32 +882,32 @@ class Agent:
             elif user_input == "/skills":
                 if self.loaded_skills:
                     for s in self.loaded_skills:
-                        print(f"  ✓ {s}")
+                        print(f"  {s}")
                 else:
                     print("  无已加载 skill")
                 continue
             elif user_input == "/memory":
-                # 直接查询记忆系统状态
                 result = self.tools.call("memory", query="状态")
                 print(result.content)
+                continue
+            elif user_input == "/think":
+                verbose_chat = not verbose_chat
+                print(f"  推理过程显示: {'开启' if verbose_chat else '关闭'}")
                 continue
             elif user_input.startswith("/skill "):
                 skill_file = user_input[7:].strip()
                 if self.add_skill(skill_file):
                     self.loaded_skills.append(skill_file)
-                    print(f"  ✓ 已加载 skill: {skill_file}")
+                    print(f"  已加载 skill: {skill_file}")
                 else:
-                    print(f"  ✗ 加载失败: {skill_file}")
+                    print(f"  加载失败: {skill_file}")
                 continue
             elif not user_input:
                 continue
 
             print()
-            agent_result = self.run(user_input, session_key=session_key, verbose=False)
-            tools = ", ".join(set(agent_result.tools_used)) if agent_result.tools_used else "无"
-            print(f"🦖: {agent_result.content}")
-            print(f"  [工具: {tools} | 迭代: {agent_result.iterations} | 用时: {agent_result.total_time_ms}ms]\n")
+            agent_result = self.run(user_input, session_key=session_key, verbose=verbose_chat)
+            tools_line = ", ".join(dict.fromkeys(agent_result.tools_used)) if agent_result.tools_used else "无"
+            print(f"{agent_result.content}")
+            print(f"  [工具: {tools_line} | 迭代: {agent_result.iterations} | 用时: {agent_result.total_time_ms}ms]\n")
 
-
-# 为 `from superclaw.agent import Agent` 时避免循环导入
-__all__ = ["Agent", "AgentResult"]
