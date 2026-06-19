@@ -1,4 +1,4 @@
-"""真实 LLM 端到端进化测试 — 用真实 LLM 驱动完整进化循环
+"""真实 LLM 端到端进化测试 — 用真实 LLM 驱动进化循环
 
 这些测试会发起真实网络请求，需要真实 API 凭证才能运行。
 默认被 `-m "not integration"` 排除，不会在常规 `pytest tests/` 中执行。
@@ -16,10 +16,27 @@
     DEEPSEEK_API_KEY / GROQ_API_KEY / OPENAI_API_KEY — 至少一个
     可选: <PROVIDER>_MODEL / <PROVIDER>_BASE_URL 覆盖默认值
 
-测试内容：
-    1. 真 LLM 驱动 GEP 进化循环（信号提取 + 策略生成 + 验证）
-    2. 真 LLM 驱动好奇心探索（领域建议 + 自进化）
-    3. 真 LLM 驱动自进化循环（代码生成 + 沙箱验证）
+    AgnesAI（OpenAI 兼容）也可用，通过 OPENAI_* 环境变量配置：
+    OPENAI_API_KEY=sk-xxx OPENAI_BASE_URL=https://apihub.agnes-ai.com/v1/chat/completions
+    OPENAI_MODEL=agnes-1.5-flash
+
+已验证（2026-06-19）：用 AgnesAI agnes-1.5-flash 模型，5/5 测试全部真跑通。
+
+测试内容（诚实说明覆盖范围）：
+    1. 真 LLM 驱动 GEP 10 步进化循环（run_cycle：信号提取 + 策略生成 + 验证）
+       —— 真实覆盖，LLM 真返回内容
+    2. 真 LLM 驱动好奇心探索（run_curious_exploration：领域建议生成）
+       —— 部分覆盖：好奇心目标发现是真跑，但内部调用的 run_self_evolution_cycle
+       因未传入 code_generator/sandbox_executor 等模块而返回 skipped，
+       不触发真实的代码生成/沙箱验证/工具注册
+    3. 真 LLM + 经验学习 / 反馈学习联合
+       —— 真实覆盖经验记录与反馈信号转化
+
+未覆盖（诚实承认）：
+    - 真 LLM 驱动完整自进化闭环（gap→GitHub 获取→沙箱→热加载→真用上）
+      需同时传入全部 real-steps 模块 + 真 LLM + 网络，本文件未实现。
+      deterministic 的自进化闭环 e2e 见 test_gep_self_evolution.py
+      的 test_e2e_github_path_then_actually_call_tool（mock GitHub + 真沙箱 + 真调用）。
 """
 import os
 import sys

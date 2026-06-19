@@ -1,15 +1,19 @@
 """
-superclaw 内在动机/好奇心机制 — 让系统主动探索未知领域
+superclaw 好奇心机制 — 基于启发式的探索倾向评分
 
-设计理念：
+设计理念（诚实说明）：
 当前 GEP engine 的策略选择是固定比例 + random.random()，explore 只是无信号时的
-随机兜底。本模块引入"内在动机"（intrinsic motivation），让 superclaw 能：
-- 评估信号/任务/领域是否"新颖"（NoveltyScorer）
-- 跟踪对重复任务的"厌倦度"（BoredomTracker）
-- 整合 novelty + boredom 生成探索奖励（CuriosityDrive）
+随机兜底。本模块引入"好奇心"启发式（非真正的内在动机模型），让 superclaw 能：
+- 评估信号/任务/领域是否"新颖"（NoveltyScorer：基于访问计数的对数衰减）
+- 跟踪对重复任务的"厌倦度"（BoredomTracker：基于重复次数的线性递增）
+- 整合 novelty + boredom 生成探索奖励（CuriosityDrive：加权求和）
 - 主动发现探索目标并转成 GEP engine 能理解的 Signal（CuriosityDrivenExplorer）
 
-集成到 StrategyManager / GEPEngine 后，系统从"被动响应信号"变为"主动探索未知"。
+局限性（诚实承认）：
+- 这是启发式评分（计数 + 对数衰减 + 加权），不是 RL/神经网络的 intrinsic motivation
+- "新颖/厌倦/好奇心"是借用的拟人化命名，本质是访问频次的数学变换
+- 不具备真正的"主动意识"，只是把频次信号转成探索倾向数值
+- 集成到 StrategyManager / GEPEngine 后，系统从"纯随机兜底"变为"频次引导的探索"
 """
 import json
 import math

@@ -613,3 +613,135 @@ def test_full_pipeline_gap_to_registered_tool(tmp_workspace):
 
         # 工具应该被注册到 ToolRegistry
         assert engine.dynamic_loader.tool_registry.has("data_transformer")
+
+
+# ============================================================
+# 端到端：GitHub 路径 + 真用上 — 修复自审 #4
+# 旧测试只断言 has(tool)，从未实际调用注册的工具。
+# 这里 mock GitHub 搜索/下载（deterministic，不依赖网络），
+# 跑完整闭环后真调 tool_registry.call() 验证返回值正确。
+# ============================================================
+
+# 预制的"从 GitHub 下载"的安全代码 — 函数名必须等于能力名（沙箱 call 检查要求）
+_GITHUB_MOCK_CODE = '''"""从 GitHub 搜索下载的字符串反转工具（测试用预制代码）"""
+
+
+def string_reverser(text=""):
+    """反转字符串"""
+    return text[::-1]
+'''
+
+
+def test_e2e_github_path_then_actually_call_tool(tmp_workspace, monkeypatch):
+    """端到端：发现短板 → GitHub 找能力（mock）→ 下载 → 沙箱验证 → 热加载 → 真用上
+
+    修复自审 #4 的两个断点：
+    1. GitHub 获取路径（_acquire_from_github）从未被 deterministic 测试覆盖
+       —— 旧测试靠网络不可用静默回退到 code_generator 兜底
+    2. 注册工具后从未被实际调用（"真用上"环节完全未测）
+       —— 旧测试只断言 has(tool)，不验证工具可调用且行为正确
+    """
+    import superclaw.gep_engine as gep_mod
+
+    # ---- mock GitHubSearcher.search_code 返回可控结果 ----
+    search_calls: list = []
+
+    class _MockSearcher:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def search_code(self, query, limit=5):
+            search_calls.append(query)
+            return [{
+                "name": "string_reverser.py",
+                "path": "/",
+                "repository": "test/repo",
+                "html_url": "https://github.com/test/repo/blob/main/string_reverser.py",
+                "download_url": "https://raw.githubusercontent.com/test/repo/main/string_reverser.py",
+            }]
+
+    # ---- mock FileDownloader.download_raw 写预制代码到目标路径 ----
+    download_calls: list = []
+
+    class _MockDownloader:
+        MAX_BYTES = 1024 * 1024
+
+        def download_raw(self, url, target_path):
+            download_calls.append((url, str(target_path)))
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_text(_GITHUB_MOCK_CODE, encoding="utf-8")
+            return target_path
+
+    monkeypatch.setattr(gep_mod, "GitHubSearcher", _MockSearcher)
+    monkeypatch.setattr(gep_mod, "FileDownloader", _MockDownloader)
+
+    engine = _make_self_evo_engine(tmp_workspace, test_runner_passed=True)
+
+    # ---- 跑完整自进化循环 ----
+    result = engine.run_self_evolution_cycle(
+        task_requirements=["string_reverser"]
+    )
+
+    # ---- 断言 1: GitHub 路径真被走通（不是静默回退到 code_generator）----
+    assert len(search_calls) == 1, "GitHubSearcher.search_code 应被调用"
+    assert "string reverser" in search_calls[0]
+    assert len(download_calls) == 1, "FileDownloader.download_raw 应被调用"
+
+    # ---- 断言 2: 闭环成功 ----
+    assert result["status"] == "success", f"status={result['status']} errors={result['errors']}"
+    assert len(result["validated"]) == 1
+    validated = result["validated"][0]
+    assert validated["missing_capability"] == "string_reverser"
+    assert validated["tool_name"] == "string_reverser"
+
+    # ---- 断言 3: 能力注册到 CapabilityRegistry ----
+    cap = engine.capability_registry.get("string_reverser")
+    assert cap is not None
+    assert cap.source == "generated"
+
+    # ---- 断言 4: 工具注册到 ToolRegistry ----
+    tool_registry = engine.dynamic_loader.tool_registry
+    assert tool_registry.has("string_reverser")
+
+    # ---- 断言 5（核心）：真用上 —— 实际调用注册的工具，验证返回值 ----
+    # 这是旧测试完全缺失的环节：只查 has() 不调 call()
+    call_result = tool_registry.call("string_reverser", text="hello")
+    assert call_result.error is False, f"工具调用出错: {call_result.content}"
+    assert call_result.content == "olleh", f"期望 'olleh'，实际 {call_result.content!r}"
+
+    # 再调一次验证幂等可用
+    call_result2 = tool_registry.call("string_reverser", text="superclaw")
+    assert call_result2.error is False
+    assert call_result2.content == "walcrepus"
+
+
+def test_e2e_github_path_failure_falls_back_to_generator(tmp_workspace, monkeypatch):
+    """GitHub 搜索返回错误 → 回退到 code_generator 兜底（验证降级路径）
+
+    旧测试靠"无网络"触发降级，非 deterministic。这里 mock GitHub 返回错误，
+    deterministic 验证降级到 _acquire_from_generator 的路径。
+    """
+    import superclaw.gep_engine as gep_mod
+
+    class _MockSearcherError:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def search_code(self, query, limit=5):
+            return [{"error": "mock: GitHub API 不可用"}]
+
+    monkeypatch.setattr(gep_mod, "GitHubSearcher", _MockSearcherError)
+    # FileDownloader 不应被调用（search 就失败了）
+    monkeypatch.setattr(gep_mod, "FileDownloader",
+                        lambda *a, **kw: (_ for _ in ()).throw(AssertionError(
+                            "FileDownloader 不应在 search 失败时被调用")))
+
+    engine = _make_self_evo_engine(tmp_workspace, test_runner_passed=True)
+
+    result = engine.run_self_evolution_cycle(
+        task_requirements=["data_transformer"]
+    )
+
+    # GitHub 失败 → 回退到 code_generator mock 兜底 → 仍应成功
+    assert result["status"] in ("success", "no_acquisition"), \
+        f"status={result['status']} errors={result['errors']}"

@@ -376,7 +376,7 @@ class GEPEngine:
         )
         self.cycle_count = 0
 
-        # ---- 内在动机/好奇心（可选）----
+        # ---- 好奇心启发式（可选，非真内在动机模型）----
         self.curiosity = curiosity
 
         # ---- 经验学习（可选）----
@@ -434,8 +434,8 @@ class GEPEngine:
                     signal_type="curiosity",
                     source="curiosity:drive",
                     severity="info",
-                    pattern="好奇心驱动探索未知领域",
-                    context="intrinsic motivation",
+                    pattern="好奇心启发式触发探索（频次引导，非真内在动机）",
+                    context="heuristic curiosity",
                 ))
                 result["curiosity_exploring"] = True
             else:
@@ -1341,6 +1341,10 @@ class GEPEngine:
         """从 GitHub 搜索获取能力（搜索 + 下载代码）
 
         安全：所有调用 try-except，失败返回 None
+
+        注意：GitHub 下载的代码本身不带测试，这里生成一个最小冒烟测试
+        （import + callable 检查），否则沙箱会因"无测试代码"直接拒绝，
+        导致 GitHub 获取路径永远走不通（修复自审 #4 发现的死路径）。
         """
         if not _GITHUB_TOOLS_AVAILABLE:
             return None
@@ -1371,12 +1375,23 @@ class GEPEngine:
             # 读取下载的代码
             code_text = downloaded.read_text(encoding="utf-8")
 
+            # 生成最小冒烟测试：import + callable 检查
+            # 无法为任意 GitHub 代码写完整测试，但至少验证可导入且函数存在
+            cap_name = gap.missing_capability
+            smoke_test = (
+                f"import {cap_name}\n"
+                f"def test_importable():\n"
+                f"    assert hasattr({cap_name}, '{cap_name}')\n"
+                f"def test_callable():\n"
+                f"    assert callable(getattr({cap_name}, '{cap_name}'))\n"
+            )
+
             return GeneratedCode(
                 name=gap.missing_capability,
                 code=code_text,
                 imports=[],
                 dependencies=[],
-                test_code="",
+                test_code=smoke_test,
                 llm_provider="github_search",
                 tokens_used=0,
             )

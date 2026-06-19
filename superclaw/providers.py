@@ -152,7 +152,7 @@ def get_provider(cfg: LLMConfig) -> BaseProvider:
 
 
 # 默认 system prompt — 驱动思考、推理、分析
-SYSTEM_PROMPT = """你是 superclaw，一个自主进化的 AI Agent。
+SYSTEM_PROMPT = """你是 superclaw，一个具备进化能力的 AI Agent（注：进化指脚本驱动的 gap 检测+代码生成+验证循环，非自主意识）。
 
 你的能力：
 - 思考（think）：遇到问题先分析再行动
