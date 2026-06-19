@@ -2,12 +2,55 @@
 superclaw 配置加载
 支持：config.json + 环境变量
 优先级：环境变量 > config.json > 默认
+
+Schema 校验：未知 key 被忽略，必需字段缺失使用默认值。
 """
 import json
+import logging
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, cast
+
+logger = logging.getLogger(__name__)
+
+
+# ---- JSON Schema（用于 load_config 校验）----
+_CONFIG_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "llm": {
+            "type": "object",
+            "properties": {
+                "provider": {"type": "string"},
+                "model": {"type": "string"},
+                "api_key": {"type": "string"},
+                "base_url": {"type": "string"},
+                "temperature": {"type": "number"},
+                "max_tokens": {"type": "integer"},
+                "timeout": {"type": "integer"},
+            },
+        },
+        "session": {
+            "type": "object",
+            "properties": {
+                "max_messages": {"type": "integer"},
+                "path": {"type": "string"},
+            },
+        },
+        "tools": {
+            "type": "object",
+            "properties": {
+                "shell": {"type": "boolean"},
+                "file": {"type": "boolean"},
+                "web": {"type": "boolean"},
+                "think": {"type": "boolean"},
+                "max_tool_iterations": {"type": "integer"},
+            },
+        },
+        "workspace": {"type": "string"},
+    },
+}
 
 
 DEFAULT_CONFIG: Dict[str, Any] = {
@@ -67,6 +110,51 @@ class SuperclawConfig:
     session: SessionConfig = field(default_factory=SessionConfig)
     tools: ToolsConfig = field(default_factory=ToolsConfig)
     workspace: str = str(Path.cwd())
+
+
+def _validate_config(cfg: Dict[str, Any], defaults: Dict[str, Any]) -> None:
+    """校验配置值类型，拒绝非法类型（静默降级为默认值）"""
+    # 工具类型定义（显式标注 value type 避免 mypy 推断为 object）
+    type_specs: Dict[str, Dict[str, type]] = {
+        "llm": {
+            "provider": str, "model": str, "api_key": str,
+            "base_url": str, "temperature": float,
+            "max_tokens": int, "timeout": int,
+        },
+        "session": {"max_messages": int, "path": str},
+        "tools": {
+            "shell": bool, "file": bool, "web": bool,
+            "think": bool, "max_tool_iterations": int,
+        },
+    }
+
+    # workspace 是顶级字段，单独校验
+    if "workspace" in cfg and not isinstance(cfg["workspace"], str):
+        logger.warning(
+            "[Config] 字段 workspace 类型错误 (%s)，使用默认值",
+            type(cfg["workspace"]).__name__
+        )
+        cfg["workspace"] = defaults.get("workspace", str(Path.cwd()))
+
+    def check_section(section: str, data: Dict[str, Any],
+                      spec: Dict[str, type]) -> None:
+        if not isinstance(data, dict):
+            return
+        for key, expected in spec.items():
+            if key not in data:
+                continue
+            val = data[key]
+            if not isinstance(val, expected):
+                logger.warning(
+                    "[Config] 字段 %s.%s 类型错误 (%s)，使用默认值",
+                    section, key, type(val).__name__
+                )
+                section_defaults = defaults.get(section, {})
+                data[key] = section_defaults.get(key) if isinstance(section_defaults, dict) else None
+
+    for section, spec in type_specs.items():
+        if section in cfg:
+            check_section(section, cast(Dict[str, Any], cfg[section]), spec)
 
 
 def _env_override(cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -130,6 +218,9 @@ def load_config(config_path: Optional[str] = None) -> SuperclawConfig:
                     break
             except (json.JSONDecodeError, IOError):
                 continue
+
+    # Schema 校验（拒绝非法类型，降级为默认值）
+    _validate_config(cfg, DEFAULT_CONFIG)
 
     # 环境变量覆盖
     cfg = _env_override(cfg)

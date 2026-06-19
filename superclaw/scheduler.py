@@ -90,6 +90,8 @@ class EvolutionScheduler:
         self._results: List[Dict[str, Any]] = []
         self._run_count = 0
         self._last_run: Optional[str] = None  # ISO 时间戳
+        # 防抖：上一周期是否仍在执行中
+        self._executing = False
         # 回调钩子：MultiModeScheduler 用它实现多模式轮转
         self._callback_override: Optional[Any] = None
 
@@ -224,10 +226,19 @@ class EvolutionScheduler:
         with self._lock:
             if not self._running:
                 return
+            # 防抖：上一周期尚未完成，跳过本周期
+            if self._executing:
+                logger.warning("[Scheduler] 上一进化周期未完成，跳过本周期（防抖）")
+                # 调度下一次（如果还在运行）
+                if self._running:
+                    self._schedule_next()
+                return
+            self._executing = True
 
         # 如果有回调覆盖（MultiModeScheduler 用），走覆盖逻辑
         if self._callback_override is not None:
             self._callback_override()
+            self._executing = False
             return
 
         # 执行进化（不在锁内，避免长时间持锁）
@@ -248,6 +259,7 @@ class EvolutionScheduler:
                     "error": str(e),
                 })
         finally:
+            self._executing = False
             # 调度下一次（如果还在运行）
             with self._lock:
                 if self._running:

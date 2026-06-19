@@ -24,6 +24,7 @@ superclaw LLM 自动路由 SDK — 移植自 LiteLLM 的核心理念
     response = router.complete("问题", provider="deepseek")
 """
 import json
+import logging
 import os
 import time
 import random
@@ -32,6 +33,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from urllib import request as _ureq
 from urllib import error as _uerr
+
+logger = logging.getLogger(__name__)
 
 # 检测 litellm 是否安装
 LITELLM_AVAILABLE = importlib.util.find_spec("litellm") is not None
@@ -105,6 +108,9 @@ class LLMRouter:
                      max_tokens: int = 2048, temperature: float = 0.7,
                      timeout: int = 60, cost_per_1k: float = 0.0) -> None:
         """添加 LLM Provider"""
+        # 模型名校验：拒绝含空白字符的危险模型名
+        if model and any(c.isspace() for c in model):
+            raise ValueError(f"模型名包含非法字符: {model!r}")
         self.providers[name] = ProviderConfig(
             name=name, api_key=api_key, model=model, base_url=base_url,
             priority=priority, max_tokens=max_tokens, temperature=temperature,
@@ -278,65 +284,108 @@ class LLMRouter:
     def _call_urllib(self, pconfig: ProviderConfig,
                      messages: List[Dict[str, Any]],
                      max_tokens: Optional[int], t0: float) -> CompletionResult:
-        """使用 urllib 调用 OpenAI 兼容 API"""
-        try:
-            if pconfig.name == "ollama":
-                # Ollama API 格式
-                payload = json.dumps({
-                    "model": pconfig.model,
-                    "messages": messages,
-                    "stream": False,
-                    "options": {"temperature": pconfig.temperature},
-                }).encode("utf-8")
-                headers = {"Content-Type": "application/json"}
-            else:
-                # OpenAI 兼容格式
-                payload = json.dumps({
-                    "model": pconfig.model,
-                    "messages": messages,
-                    "temperature": pconfig.temperature,
-                    "max_tokens": max_tokens or pconfig.max_tokens,
-                }).encode("utf-8")
-                headers = {
-                    "Authorization": f"Bearer {pconfig.api_key}",
-                    "Content-Type": "application/json",
-                }
-                if pconfig.name == "openrouter":
-                    headers["HTTP-Referer"] = "https://superclaw.local"
-                    headers["X-Title"] = "superclaw"
+        """使用 urllib 调用 OpenAI 兼容 API（带指数退避重试）"""
+        # 指数退避重试配置
+        max_retries = 3
+        base_delay = 1.0  # 秒
 
-            req = _ureq.Request(
-                pconfig.base_url, data=payload,
-                headers=headers, method="POST",
-            )
+        for attempt in range(max_retries):
+            try:
+                if pconfig.name == "ollama":
+                    # Ollama API 格式
+                    payload = json.dumps({
+                        "model": pconfig.model,
+                        "messages": messages,
+                        "stream": False,
+                        "options": {"temperature": pconfig.temperature},
+                    }).encode("utf-8")
+                    headers = {"Content-Type": "application/json"}
+                else:
+                    # OpenAI 兼容格式
+                    payload = json.dumps({
+                        "model": pconfig.model,
+                        "messages": messages,
+                        "temperature": pconfig.temperature,
+                        "max_tokens": max_tokens or pconfig.max_tokens,
+                    }).encode("utf-8")
+                    headers = {
+                        "Authorization": f"Bearer {pconfig.api_key}",
+                        "Content-Type": "application/json",
+                    }
+                    if pconfig.name == "openrouter":
+                        headers["HTTP-Referer"] = "https://superclaw.local"
+                        headers["X-Title"] = "superclaw"
 
-            with _ureq.urlopen(req, timeout=pconfig.timeout) as resp:  # nosec B310 - base_url 由管理员配置，已设 timeout
-                data = json.loads(resp.read().decode("utf-8"))
+                req = _ureq.Request(
+                    pconfig.base_url, data=payload,
+                    headers=headers, method="POST",
+                )
 
-            content = data.get("choices", [{}])[0] \
-                .get("message", {}).get("content", "")
-            tokens = data.get("usage", {}).get("total_tokens", 0)
+                with _ureq.urlopen(req, timeout=pconfig.timeout) as resp:  # nosec B310 - base_url 由管理员配置，已设 timeout
+                    status = resp.status
+                    data = json.loads(resp.read().decode("utf-8"))
 
-            return CompletionResult(
-                content=content,
-                provider=pconfig.name, model=pconfig.model,
-                tokens_used=tokens,
-                cost=tokens * pconfig.cost_per_1k / 1000,
-                latency_ms=int((time.time() - t0) * 1000),
-            )
+                # 检查 HTTP 状态码是否需要重试
+                if status in (429, 500, 502, 503, 504) and attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    logger.warning("[%s] API 返回 %d，%.1f秒后重试 (attempt %d/%d)",
+                                   pconfig.name, status, delay, attempt + 1, max_retries)
+                    time.sleep(delay)
+                    continue
 
-        except _uerr.URLError as e:
-            return CompletionResult(
-                content="", provider=pconfig.name, model=pconfig.model,
-                error=f"网络错误: {e}",
-                latency_ms=int((time.time() - t0) * 1000),
-            )
-        except Exception as e:
-            return CompletionResult(
-                content="", provider=pconfig.name, model=pconfig.model,
-                error=str(e),
-                latency_ms=int((time.time() - t0) * 1000),
-            )
+                content = data.get("choices", [{}])[0] \
+                    .get("message", {}).get("content", "")
+                tokens = data.get("usage", {}).get("total_tokens", 0)
+
+                return CompletionResult(
+                    content=content,
+                    provider=pconfig.name, model=pconfig.model,
+                    tokens_used=tokens,
+                    cost=tokens * pconfig.cost_per_1k / 1000,
+                    latency_ms=int((time.time() - t0) * 1000),
+                )
+
+            except _uerr.HTTPError as e:
+                # 4xx 客户端错误不重试
+                if e.code in (400, 401, 403, 404) or attempt >= max_retries - 1:
+                    return CompletionResult(
+                        content="", provider=pconfig.name, model=pconfig.model,
+                        error=f"HTTP {e.code}: {e.reason}",
+                        latency_ms=int((time.time() - t0) * 1000),
+                    )
+                delay = base_delay * (2 ** attempt)
+                logger.warning("[%s] HTTP %d，%.1f秒后重试 (attempt %d/%d)",
+                               pconfig.name, e.code, delay, attempt + 1, max_retries)
+                time.sleep(delay)
+            except _uerr.URLError as e:
+                if attempt >= max_retries - 1:
+                    return CompletionResult(
+                        content="", provider=pconfig.name, model=pconfig.model,
+                        error=f"网络错误: {e}",
+                        latency_ms=int((time.time() - t0) * 1000),
+                    )
+                delay = base_delay * (2 ** attempt)
+                logger.warning("[%s] 网络错误 %s，%.1f秒后重试",
+                               pconfig.name, e, delay)
+                time.sleep(delay)
+            except Exception as e:
+                if attempt >= max_retries - 1:
+                    return CompletionResult(
+                        content="", provider=pconfig.name, model=pconfig.model,
+                        error=str(e),
+                        latency_ms=int((time.time() - t0) * 1000),
+                    )
+                delay = base_delay * (2 ** attempt)
+                logger.warning("[%s] 未知错误 %s，%.1f秒后重试",
+                               pconfig.name, e, delay)
+                time.sleep(delay)
+
+        # 所有重试均失败
+        return CompletionResult(
+            content="", provider=pconfig.name, model=pconfig.model,
+            error=f"API 调用失败，已重试 {max_retries} 次",
+            latency_ms=int((time.time() - t0) * 1000),
+        )
 
     def _mock_response(self, messages: List[Dict[str, Any]]) -> str:
         """Mock 响应"""

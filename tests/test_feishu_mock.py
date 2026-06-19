@@ -515,7 +515,9 @@ def test_send_without_lark_logs_error_and_returns():
 def _wire_send_response(ch, success: bool, msg: str = "ok"):
     """把 self._lark.Client.builder()...create() 的返回值接到给定响应。"""
     cb = ch._lark.Client.builder.return_value
-    built = cb.app_id.return_value.app_secret.return_value.build.return_value
+    # Builder 链: app_id → app_secret → tenant_access_token → build → im.v1.message.create
+    after_token = cb.app_id.return_value.app_secret.return_value.tenant_access_token.return_value
+    built = after_token.build.return_value
     resp = MagicMock()
     resp.success.return_value = success
     resp.msg = msg

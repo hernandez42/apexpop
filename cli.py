@@ -2,33 +2,33 @@
 """
 superclaw CLI 入口
 用法:
-  python3 -m superclaw                         交互式对话
-  python3 -m superclaw --provider mock         指定 Provider
-  python3 -m superclaw --provider deepseek     使用 DeepSeek
-  python3 -m superclaw run "你的问题"            单次运行
-  python3 -m superclaw --providers              列出可用 Provider
-  python3 -m superclaw --config path.json       指定配置
-  python3 -m superclaw --test                   运行内置测试
-  python3 -m superclaw --evolve                 运行一次进化循环
-  python3 -m superclaw --evolve --mode curious  好奇心探索
-  python3 -m superclaw --schedule --interval 60 启动定时调度（60秒一次）
+  python3 cli.py                          交互式对话（直接运行）
+  python3 -m superclaw                    交互式对话（模块运行）
+  python3 cli.py --provider mock           指定 Provider
+  python3 -m superclaw --provider deepseek 使用 DeepSeek
+  python3 cli.py run "你的问题"            单次运行
+  python3 -m superclaw --providers        列出可用 Provider
+  python3 cli.py --config path.json        指定配置
+  python3 -m superclaw --evolve           运行一次进化循环
+  python3 cli.py --schedule --interval 60  启动定时调度
 """
 import argparse
 import sys
 import time
 from pathlib import Path
 
-# 支持 `python3 cli.py` 或 `python3 -m superclaw`
+# 支持 `python3 cli.py` 从 repo 根目录运行，或 `python3 -m superclaw` 从任意目录运行
 PROJECT_ROOT = Path(__file__).parent.resolve()
-sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-from superclaw import Agent, get_provider, list_providers, load_config
+from superclaw import Agent, get_provider, list_providers, load_config, __version__
 from superclaw.config import SuperclawConfig
 
 
 def _print_header(cfg: SuperclawConfig) -> None:
     print("=" * 60)
-    print("  🦖 superclaw v2.0.0  —  轻量级 AI Agent 框架")
+    print(f"  🦖 superclaw v{__version__}  —  轻量级 AI Agent 框架")
     print("=" * 60)
     print(f"  Provider:  {cfg.llm.provider}")
     print(f"  Model:     {cfg.llm.model}")
@@ -146,8 +146,9 @@ def _run_schedule(args, cfg: SuperclawConfig) -> int:
     print("  Ctrl+C 停止")
     print("-" * 60)
 
+    from typing import Any
     if mode == "multi":
-        scheduler = MultiModeScheduler(
+        scheduler: Any = MultiModeScheduler(
             engine, interval=interval,
             modes=[MODE_CYCLE, MODE_CURIOUS, MODE_FEEDBACK],
         )

@@ -259,9 +259,24 @@ class FileDownloader:
             if len(data) > self.MAX_BYTES:
                 logger.warning("文件过大 (%d > %d bytes)，拒绝下载: %s",
                                len(data), self.MAX_BYTES, url)
+                # 清理可能已存在的部分文件
+                if target.exists():
+                    try:
+                        target.unlink()
+                    except OSError:
+                        pass
                 return None
             target.write_bytes(data)
             return target
+        except OSError as e:
+            logger.warning("下载 IO 错误: %s — %s", url, e)
+            # 清理可能已损坏的 partial 文件
+            if target.exists():
+                try:
+                    target.unlink()
+                except OSError:
+                    pass
+            return None
         except URLError as e:
             logger.warning("下载网络错误: %s — %s", url, e)
             return None
