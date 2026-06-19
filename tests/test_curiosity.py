@@ -1,4 +1,4 @@
-"""测试 superclaw.curiosity — 内在动机/好奇心机制
+"""测试 superclaw.curiosity — 好奇心启发式机制（频次引导的探索倾向评分）
 
 覆盖：
 - NoveltyScorer：未见过=1.0、见过衰减、record 更新、持久化往返、多类型独立、novelty_bonus
