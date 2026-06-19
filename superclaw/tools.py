@@ -142,10 +142,12 @@ def build_default_tools(cfg_workspace: str,
     # think 工具 — 用于让 Agent 自己思考、推理、分析
     if think:
         def _think(prompt: str) -> str:
-            """让 Agent 思考一段内容，不产生副作用"""
-            return f"[思考] {prompt}\n→ 已记录推理过程"
+            """让 Agent 思考一段内容，不产生副作用。
+            配合记忆系统：先 think 再决定是否调用工具"""
+            return f"[思考] {prompt}\n→ 已记录推理过程（可用于分析用户意图与下一步工具选择）"
         tools.register("think", _think,
-                       "思考/推理/分析，用于记录自己的推理过程，不会改变系统状态",
+                       "思考/推理/分析。在调用其他工具前先用 think 记录推理过程，"
+                       "不会改变系统状态。建议：拿到工具结果后也用 think 做小结。",
                        {"prompt": {"type": "string", "description": "思考内容"}})
 
     # 文件读取工具

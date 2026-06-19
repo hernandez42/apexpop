@@ -118,12 +118,58 @@ def _parse_tool_call(text: str) -> Optional[Tuple[str, Dict[str, str]]]:
     return None
 
 
+# Agent 启动时需要自动加载的核心 MD 文件
+# 这些文件定义了 Agent 的身份与知识体系
+_CORE_MD_FILES: List[str] = [
+    "SOUL.md",
+    "MEMORY.md",
+    "AGENTS.md",
+    "TOOLS.md",
+    "README.md",
+]
+
+# LLM 自我介绍检测关键词 — 命中任一即视为违规输出
+# 精确字符串匹配 + 全小写。只应命中典型的模型自我介绍话术，
+# 不能拦截正常的工具驱动回复（如 "我帮你读取文件..."）
+_ROLEPLAY_TRIGGERS: List[str] = [
+    # Agnes 特定
+    "我是 agnes", "agnes-2.0", "agnes-2", "sapiens ai", "由 sapiens",
+    # 其他模型
+    "我是 deepseek", "deepseek 开发", "deepseek-chat",
+    "我是 groq", "groq 开发",
+    "我是 openai", "由 openai 开发",
+    "我是 qwen", "我是 glm", "我是 doubao",
+    # 通用"我是 AI"类型的自我介绍 — 注意不要匹配 "我是 superclaw"
+    "我是一个人工智能", "作为一个人工智能助手", "作为一个 ai 助手",
+    # "无法访问"类型的拒答话术
+    "我无法查看或访问自己的内部", "无法访问自己的内部系统",
+    "我没有权限访问或读取任何外部", "无法访问或读取任何外部",
+    "我只能基于训练数据", "只能基于训练数据回答",
+    # 典型的能力清单开头
+    "我可以为你提供准确", "可以为你提供准确",
+    "我能帮你解答", "解答各类知识性问题",
+    # 旧版 superclaw 的错误角色
+    "一个具备进化能力的 ai agent",
+]
+
+def _looks_like_roleplay(text: str) -> bool:
+    """检测 LLM 是否在输出角色扮演/自我介绍 —— 真 LLM 才会出现此问题。"""
+    if not text:
+        return False
+    low = text.lower()
+    for t in _ROLEPLAY_TRIGGERS:
+        if t in low:
+            return True
+    return False
+
+
 class Agent:
     """superclaw 核心 Agent
     - 可配置 LLM Provider
     - 工具调用循环（LLM -> 工具 -> LLM 迭代）
-    - 会话记忆
-    - Skill Markdown 支持
+    - 会话记忆（短期）
+    - MD 知识体系（长期记忆）：启动自动加载 SOUL/MEMORY/AGENTS/TOOLS 等
+    - 每轮对话前自动做 memory 检索，让 LLm 用已有知识作答
     """
 
     def __init__(
@@ -154,11 +200,67 @@ class Agent:
         # ---- 用户反馈学习（可选）----
         self.feedback_learner = feedback_learner
 
+        # --- 记忆系统互联 ---
+        # 用 tools._workspace 初始化 MemoryStore（避免循环 import）
+        self._memory_store = None
+        try:
+            from .memory import MemoryStore
+            self._memory_store = MemoryStore(Path(self.tools._workspace))
+        except Exception:
+            self._memory_store = None
+
+        # 启动加载核心 MD → 注入 system prompt
+        self._loaded_core_md: List[str] = []
+        self._autoload_core_md()
+
         # 自动扫描并加载 skills 目录
         self._autoload_skills()
 
+    # ---- 核心 MD 文件自动加载 ----
+    def _autoload_core_md(self) -> None:
+        """启动时读取 core MD 文件（SOUL/MEMORY/AGENTS/TOOLS）并注入 system prompt。
+        让 LLM 从一开始就知道自己的身份与知识体系，而不是凭空自我介绍。"""
+        ws = Path(self.tools._workspace)
+        if not ws.exists():
+            return
+
+        found_blocks: List[str] = []
+        for fname in _CORE_MD_FILES:
+            fpath = ws / fname
+            if fpath.exists() and fpath.is_file():
+                try:
+                    text = fpath.read_text(encoding="utf-8", errors="ignore").strip()
+                    if text:
+                        # 截断过长内容，避免 system prompt 爆炸
+                        max_chars = 2000
+                        preview = text[:max_chars]
+                        if len(text) > max_chars:
+                            preview += "\n...[已截断，完整内容可用 memory_read 工具读取]"
+                        title = fname
+                        for line in text.splitlines()[:1]:
+                            if line.startswith("#"):
+                                candidate = line.lstrip("#").strip()
+                                if candidate:
+                                    title = candidate
+                                break
+                        found_blocks.append(
+                            f"## 知识文件: {fname} ({title})\n{preview}"
+                        )
+                        self._loaded_core_md.append(fname)
+                except Exception:
+                    continue
+
+        if found_blocks:
+            # 将核心 MD 拼接到 system prompt 尾部（在 tool 说明之前）
+            joined = "\n\n".join(found_blocks)
+            self.system_prompt = (
+                f"{self.system_prompt}\n\n===== 你的本地知识体系（只读，用于回答问题）=====\n"
+                f"{joined}\n"
+                f"===== 本地知识结束。需要更多细节可调用 memory 工具检索 =====\n"
+            )
+
     def _autoload_skills(self) -> None:
-        """自动扫描 skills/ 目录并加载所有 .md skill 文件"""
+        """自动扫描 skills 目录并加载所有 .md skill 文件"""
         skills_dir = Path(self.cfg.workspace) / "skills"
         if not skills_dir.exists():
             return
@@ -200,11 +302,66 @@ class Agent:
         )
         return True
 
+    # ---- 每轮对话前：memory 检索 + 对话写入记忆 ----
+    def _retrieve_relevant_memory(self, user_input: str) -> Optional[str]:
+        """用用户输入检索本地 md 知识/反思，返回简短摘要。
+        失败或无匹配返回 None，不阻塞主流程。"""
+        if not self.tools.has("memory"):
+            return None
+        try:
+            result = self.tools.call("memory", query=user_input)
+            content = getattr(result, "content", str(result))
+            if not content:
+                return None
+            # 无命中信号："未找到 xxx 相关知识"（检索失败） / "暂无 xxx"（无反思记录）
+            # 这些内容不应该注入消息，避免 LLM 被误引导
+            has_real_result = True
+            stripped = content.strip()
+            # 单行的"未找到"提示视为无结果
+            if "未找到" in stripped and "相关" in stripped and len(stripped) < 200:
+                has_real_result = False
+            if ("暂无" in stripped or "无相关" in stripped) and len(stripped) < 200:
+                has_real_result = False
+            if not has_real_result:
+                return None
+            snippet = content[:600]
+            if len(content) > 600:
+                snippet += "..."
+            return snippet
+        except Exception:
+            return None
+
+    def _write_turn_to_memory(self, session_key: str,
+                              user_input: str, assistant_reply: str) -> None:
+        """将本轮对话写入记忆系统：在 memory/<session_key>.md 追加一条日记。
+        实现 session ↔ memory 的真实互联。"""
+        try:
+            ws = Path(self.tools._workspace)
+            mem_dir = ws / "memory"
+            mem_dir.mkdir(parents=True, exist_ok=True)
+            log_file = mem_dir / f"{session_key}.md"
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            entry = (
+                f"\n### 对话记录 @ {ts}\n"
+                f"- 用户: {user_input[:400]}\n"
+                f"- 助手: {str(assistant_reply)[:400]}\n"
+            )
+            with open(log_file, "a", encoding="utf-8") as f:
+                f.write(entry)
+        except Exception:
+            pass
+
     def run(self, user_input: str, session_key: str = "default",
             *, verbose: bool = False, max_iterations: Optional[int] = None) -> AgentResult:
         """处理用户输入，运行 Agent 循环
-        流程:
-        user_input -> [LLM 判断是否需要工具] -> 调用工具 -> LLM 整合 -> 返回
+        流程（参考 nanobot）:
+        1. 反馈学习检测
+        2. memory 检索 → 注入消息（让 LLM 用本地 md 知识作答）
+        3. user_input → LLM 决定是否调用工具
+        4. 工具调用迭代（think + 实际工具）
+        5. 对话写入 memory 实现长期记忆
+        6. 返回总结后的自然语言答案
         """
         t0 = time.time()
 
@@ -212,7 +369,6 @@ class Agent:
             return AgentResult(content="你说什么？")
 
         # ---- 用户反馈采集（可选）----
-        # 检测用户消息是否包含反馈，是则记录到 FeedbackStore
         if self.feedback_learner is not None:
             try:
                 self.feedback_learner.detect_and_record(
@@ -221,22 +377,33 @@ class Agent:
             except Exception:
                 pass  # 反馈采集失败不阻断主流程
 
+        # ---- 第一步：memory 检索（session ↔ memory 互联）----
+        memory_hint = ""
+        memory_snippet = self._retrieve_relevant_memory(user_input)
+        if memory_snippet:
+            memory_hint = (
+                "\n\n===== 从本地 md 知识体系检索到的相关内容（用于回答）=====\n"
+                f"{memory_snippet}\n"
+                "===== 检索结束。优先基于以上内容回答，需要更多细节可调用 memory 工具 =====\n"
+            )
+
         # 获取会话
         session = self.sessions.get(session_key)
         session.add("user", user_input)
 
-        # 构建消息
+        # 构建消息：system prompt + 本地知识注入 + tool 说明
         tool_hint = ""
         if self.tools.names:
             tool_hint = "\n\n" + self.tools.to_llm_instructions()
 
-        system_prompt = self.system_prompt + tool_hint
+        system_prompt = self.system_prompt + memory_hint + tool_hint
         messages = session.to_messages(system_prompt)
 
         result = AgentResult(content="", tools_used=[], tool_outputs=[])
         max_it = max_iterations or self.max_tool_iterations
 
         # 工具调用循环 — 类似 nanobot runner
+        roleplay_fix_count = 0  # 防御：角色违规重试计数
         for i in range(max_it):
             # 调用 LLM
             llm_output = self.provider.call(messages)
@@ -248,10 +415,31 @@ class Agent:
             # 检查是否有工具调用
             tool_call = _parse_tool_call(llm_output)
             if not tool_call:
-                # 没有工具调用，LLM 直接给了最终答案
+                # 没有工具调用 —— 先检查是不是角色自我介绍违规
+                if _looks_like_roleplay(llm_output) and roleplay_fix_count < 2:
+                    # 检测到 LLM 在输出"我是 Agnes / 无法访问内部"等角色扮演
+                    # 不把它当成最终答案，注入错误消息后强制重试
+                    roleplay_fix_count += 1
+                    warning = (
+                        f"[系统警告 #{roleplay_fix_count}] 检测到你输出了模型自我介绍/角色扮演内容。"
+                        f"请严格遵守 system prompt 的身份定义：你不是任何第三方模型，"
+                        f"而是 superclaw 的本地代码执行工具。请重新回答用户问题：{user_input}"
+                        f" —— 要么调用工具，要么直接用中文回答。"
+                    )
+                    session.add("assistant", llm_output)
+                    session.add("tool", warning)
+                    messages.append({"role": "assistant", "content": llm_output})
+                    messages.append({"role": "user", "content": warning})
+                    if verbose:
+                        print(f"  ✋ 检测到角色违规，强制重试 #{roleplay_fix_count}")
+                    continue
+
+                # 正常的最终答案
                 final_answer = llm_output.strip()
                 session.add("assistant", final_answer)
                 result.content = final_answer
+                # ---- session → memory 写入：互联闭环 ----
+                self._write_turn_to_memory(session_key, user_input, final_answer)
                 break
 
             tool_name, tool_args = tool_call
@@ -292,6 +480,8 @@ class Agent:
             final = self.provider.call(messages)
             session.add("assistant", final.strip())
             result.content = final.strip()
+            # session → memory 写入
+            self._write_turn_to_memory(session_key, user_input, final.strip())
             if verbose:
                 print(f"[总结] {final[:200]}")
 
