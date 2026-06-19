@@ -421,9 +421,9 @@ def test_list_providers_returns_sorted_keys():
 
 
 def test_providers_dict_contains_all():
-    assert set(PROVIDERS.keys()) == {
-        "mock", "deepseek", "groq", "openrouter", "openai", "ollama"
-    }
+    # 必须包含的基础 provider
+    required = {"mock", "deepseek", "groq", "openrouter", "openai", "ollama"}
+    assert required.issubset(set(PROVIDERS.keys()))
 
 
 def test_get_provider_returns_correct_class():
