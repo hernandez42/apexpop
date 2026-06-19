@@ -51,7 +51,12 @@ class MockProvider(BaseProvider):
         self._turn += 1
 
         last_msg = messages[-1] if messages else {"role": "user", "content": ""}
-        if last_msg.get("role") == "tool":
+        # 兼容两种工具结果回传方式：role=tool 或 role=user+[工具结果前缀]
+        is_tool_result = (
+            last_msg.get("role") == "tool" or
+            (last_msg.get("role") == "user" and str(last_msg.get("content", "")).startswith("[工具结果"))
+        )
+        if is_tool_result:
             return self._summarize_tool_result(messages)
 
         user_content = ""
@@ -300,15 +305,21 @@ def get_provider(cfg: LLMConfig) -> BaseProvider:
 # SYSTEM_PROMPT — 纯操作指令（避免触发 LLM 角色扮演）
 # ============================================================
 
-SYSTEM_PROMPT = """你是 superclaw 项目的命令执行助手，按以下规则处理用户请求：
+SYSTEM_PROMPT = """你是 superclaw 本地代码执行工具。你的唯一任务：读文件、查代码 —— 不是闲聊机器人。
 
-1. 分析用户的请求，判断需要调用哪个工具
-2. 严格按以下格式输出工具调用（仅此一行，不附加解释）：
+## 规则（用中文，直切正题
+
+1. 能调用工具解决问题
+2. 格式必须调用格式：
    <tool 工具名> <参数名>参数值</参数名></tool>
-
 3. 收到工具结果后，用简洁中文自然语言总结给用户
-4. 不要自我介绍、不要输出能力清单、不要说"我是某某模型"
-5. 只有纯闲聊问候（如"你好"）时才直接回答
+4. 收到工具结果后，不要再调用同一工具
+
+## 何时调用
+- 文件 / 代码 / 命令 → 调用 file_read / shell / memory
+- 纯闲聊问候 → 直接回答
+
+现在开始，永远不要自我介绍。
 
 可用工具："""
 

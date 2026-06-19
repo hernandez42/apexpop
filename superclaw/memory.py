@@ -14,6 +14,7 @@ superclaw 记忆系统 — 融合 APEX mem 框架
 - 被 Agent 作为 `memory` 工具调用
 """
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -570,6 +571,121 @@ class MemoryStore:
         self.reflection.reflect(state)
         return self._format_reflections(1)
 
+    def temporal_query(self, start_time: Optional[float] = None,
+                       end_time: Optional[float] = None,
+                       limit: int = 20) -> List[Dict[str, Any]]:
+        """按时间窗口检索事件流（记忆 + 进化日志 + 反思）
+
+        参数:
+            start_time: 起始 unix 时间戳，None = 不限
+            end_time:   结束 unix 时间戳，None = 不限
+            limit:      最多返回条数
+
+        返回:
+            [{'ts': unix_ts, 'datetime': 'YYYY-MM-DD HH:MM:SS',
+              'source': 'reflection|evolution|session', 'content': str}]
+        """
+        import time
+        from datetime import datetime
+
+        events: List[Dict[str, Any]] = []
+        now = time.time()
+        if start_time is None:
+            start_time = 0
+        if end_time is None:
+            end_time = now
+
+        # 1) 反思日志
+        try:
+            if self.reflection.log_path.exists():
+                data = json.loads(self.reflection.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    for r in data:
+                        ts = r.get("ts") or r.get("timestamp") or 0
+                        if start_time <= float(ts) <= end_time:
+                            events.append({
+                                "ts": ts,
+                                "datetime": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
+                                "source": "reflection",
+                                "content": str(r.get("summary", r))[:400],
+                            })
+        except (json.JSONDecodeError, IOError, ValueError, TypeError):
+            pass
+
+        # 2) 进化日志
+        try:
+            if self.evolution.log_path.exists():
+                data = json.loads(self.evolution.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    for r in data:
+                        ts = r.get("ts") or r.get("timestamp") or 0
+                        if start_time <= float(ts) <= end_time:
+                            events.append({
+                                "ts": ts,
+                                "datetime": datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"),
+                                "source": "evolution",
+                                "content": f"cycle={r.get('cycle')} phi={r.get('fitness')} domain={r.get('domain')}",
+                            })
+        except (json.JSONDecodeError, IOError, ValueError, TypeError):
+            pass
+
+        # 3) session/*.json
+        try:
+            sessions_dir = Path(str(self.root)) / "sessions"
+            if sessions_dir.exists():
+                for sf in sorted(sessions_dir.glob("*.json")):
+                    try:
+                        st = sf.stat()
+                        if not (start_time <= st.st_mtime <= end_time):
+                            continue
+                        data = json.loads(sf.read_text(encoding="utf-8"))
+                        msgs = data.get("messages") if isinstance(data, dict) else None
+                        if isinstance(msgs, list) and msgs:
+                            m = msgs[-1]
+                            events.append({
+                                "ts": st.st_mtime,
+                                "datetime": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                                "source": "session",
+                                "content": f"{sf.stem} | last={str(m.get('content', m))[:200]}",
+                            })
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+
+        # 按时间倒序
+        events.sort(key=lambda e: float(e.get("ts", 0)), reverse=True)
+        return events[:limit]
+
+    def memory_status(self) -> Dict[str, Any]:
+        """记忆系统概览状态 — 供 Agent UI/步骤摘要使用"""
+        stats = self.knowledge.stats()
+        s = {
+            "knowledge_files": stats.get("total", 0),
+            "reflections": 0,
+            "evolution_cycles": 0,
+            "has_temporal": True,
+            "latest_reflection": None,
+        }
+        try:
+            if self.reflection.log_path.exists():
+                data = json.loads(self.reflection.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    s["reflections"] = len(data)
+                    if data:
+                        last = data[-1]
+                        s["latest_reflection"] = str(last.get("summary", last))[:120]
+        except Exception:
+            pass
+        try:
+            if self.evolution.log_path.exists():
+                data = json.loads(self.evolution.log_path.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    s["evolution_cycles"] = len(data)
+        except Exception:
+            pass
+        return s
+
     # ============= L3+ 2026-06-19 5D 时序索引 + WAL + dreamer tick =============
 
     def dream_tick(self, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -581,20 +697,15 @@ class MemoryStore:
         Returns:
             {"reflected": bool, "wal_synced": bool, "temporal_count": int, "next_dream": iso8601}
         """
-        # 1. WAL 写入 (先 WAL 再写主文件, crash 后能 replay)
         cycle = state.get("cycle", 0)
         wal_ok = self.wal.append({"cycle": cycle, "state": state, "ts": datetime.now().isoformat()})
 
-        # 2. 反思 (APEX 四问)
         reflected = False
         if state:
             self.reflection.reflect(state)
             reflected = True
 
-        # 3. 时序索引增量更新 (扫新文件 mtime > last_index_time)
         new_files = self.temporal_index.scan_incremental()
-
-        # 4. 主文件 commit (WAL 已在 step 1 fsync, 此时 truncate WAL)
         self.wal.commit()
 
         return {
@@ -605,7 +716,7 @@ class MemoryStore:
             "next_dream": (datetime.now().isoformat()),
         }
 
-    def temporal_query(self, since: str = "", until: str = "", limit: int = 20) -> str:
+    def temporal_query_iso(self, since: str = "", until: str = "", limit: int = 20) -> str:
         """5D 时序查询: 返回 [since, until] 时间区间内所有 memory 文件按时间倒序
 
         Args:
@@ -636,12 +747,10 @@ class MemoryStore:
         for entry in entries:
             cycle = entry.get("cycle", 0)
             ts = entry.get("ts", "")
-            # 追加到 evolution-history (顺序保证)
             with open(self.evolution.log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps({"cycle": cycle, "timestamp": ts,
                                     "replayed_from_wal": True, "score": 0.5}) + "\n")
             n += 1
-        # 清空 WAL
         self.wal.truncate()
         return n
 
@@ -745,7 +854,7 @@ class WALStore:
             return False
 
     def commit(self) -> None:
-        """主文件已落盘, 清空 WAL (commit 标记写入新文件, WAL 截断到 0)"""
+        """主文件已落盘, 清空 WAL"""
         self.truncate()
 
     def truncate(self) -> None:
