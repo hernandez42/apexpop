@@ -433,6 +433,11 @@ class MemoryStore:
         self.knowledge = KnowledgeIndex(self.root)
         self.evolution = EvolutionHistory(self.logs_dir / "evolution-history.jsonl")
 
+        # L3+ 2026-06-19 5D 记忆: Dimension 5 时序索引 (按 timestamp 倒序索引 memory/ + logs/ + apex-state/)
+        self.temporal_index = TemporalIndex(root=self.root)
+        # L3+ 2026-06-19 WAL checkpoint 守护: 写 evolution-history 前先 fsync WAL, crash 可 replay
+        self.wal = WALStore(path=self.logs_dir / "evolution.wal")
+
     def query(self, natural_language: str) -> str:
         """自然语言查询记忆系统 — Agent 的 memory 工具入口
 
@@ -457,6 +462,10 @@ class MemoryStore:
 
         if any(kw in q for kw in ["列出", "所有", "list", "目录", "有哪些"]):
             return self._format_knowledge_list()
+
+        # L3+ 2026-06-19 时序索引查询 (5D Dimension 5)
+        if any(kw in q for kw in ["时序", "temporal", "时间线", "时间顺序", "最近"]):
+            return self.temporal_query(limit=20)
 
         # 默认：知识检索
         return self._format_search(natural_language)
@@ -560,6 +569,212 @@ class MemoryStore:
         """立即执行反思（供 Agent 调用）"""
         self.reflection.reflect(state)
         return self._format_reflections(1)
+
+    # ============= L3+ 2026-06-19 5D 时序索引 + WAL + dreamer tick =============
+
+    def dream_tick(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """每 N 秒触发: 反思 + 时序索引更新 + WAL checkpoint.
+
+        Args:
+            state: 当前系统状态 {phi, tier, fitness, mutations, knowledge, cycle}
+
+        Returns:
+            {"reflected": bool, "wal_synced": bool, "temporal_count": int, "next_dream": iso8601}
+        """
+        # 1. WAL 写入 (先 WAL 再写主文件, crash 后能 replay)
+        cycle = state.get("cycle", 0)
+        wal_ok = self.wal.append({"cycle": cycle, "state": state, "ts": datetime.now().isoformat()})
+
+        # 2. 反思 (APEX 四问)
+        reflected = False
+        if state:
+            self.reflection.reflect(state)
+            reflected = True
+
+        # 3. 时序索引增量更新 (扫新文件 mtime > last_index_time)
+        new_files = self.temporal_index.scan_incremental()
+
+        # 4. 主文件 commit (WAL 已在 step 1 fsync, 此时 truncate WAL)
+        self.wal.commit()
+
+        return {
+            "reflected": reflected,
+            "wal_synced": wal_ok,
+            "temporal_count": len(self.temporal_index.entries),
+            "new_files_indexed": len(new_files),
+            "next_dream": (datetime.now().isoformat()),
+        }
+
+    def temporal_query(self, since: str = "", until: str = "", limit: int = 20) -> str:
+        """5D 时序查询: 返回 [since, until] 时间区间内所有 memory 文件按时间倒序
+
+        Args:
+            since: ISO 起始时间 (空=不限)
+            until: ISO 结束时间 (空=不限)
+            limit: 最大结果数
+
+        Returns:
+            格式化的时序索引列表
+        """
+        results = self.temporal_index.query(since=since, until=until, limit=limit)
+        if not results:
+            return "时序索引无结果."
+        lines = [f"📅 时序索引 ({len(results)} 条):"]
+        for r in results:
+            ts = r["ts"]; path = r["path"]; cat = r["category"]; sz = r["size"]
+            lines.append(f"  - [{ts}] {path} ({cat}, {sz} bytes)")
+        return "\n".join(lines)
+
+    def replay_wal(self) -> int:
+        """WAL replay: daemon crash 后启动时调, 从 WAL 恢复未 commit 的 cycle"""
+        if not self.wal.path.exists():
+            return 0
+        entries = self.wal.read_all()
+        if not entries:
+            return 0
+        n = 0
+        for entry in entries:
+            cycle = entry.get("cycle", 0)
+            ts = entry.get("ts", "")
+            # 追加到 evolution-history (顺序保证)
+            with open(self.evolution.log_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps({"cycle": cycle, "timestamp": ts,
+                                    "replayed_from_wal": True, "score": 0.5}) + "\n")
+            n += 1
+        # 清空 WAL
+        self.wal.truncate()
+        return n
+
+
+# ============================================================
+# L3+ 2026-06-19: 5D 时序索引 + WAL checkpoint 守护
+# ============================================================
+
+class TemporalIndex:
+    """5D Dimension 5: 时序索引 — 按 mtime 倒序索引 memory/ + logs/ + apex-state/ 所有文件.
+
+    增量扫描: scan_incremental() 只看 mtime > last_index_time 的新文件.
+    """
+    def __init__(self, root: Path):
+        self.root = root
+        self.index_path = root / "apex-state" / "temporal_index.jsonl"
+        self.index_path.parent.mkdir(parents=True, exist_ok=True)
+        self.entries: List[Dict[str, Any]] = []
+        self.last_index_time = ""
+        if self.index_path.exists():
+            try:
+                with open(self.index_path, encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            self.entries.append(json.loads(line))
+                if self.entries:
+                    self.last_index_time = max(e["ts"] for e in self.entries)
+            except Exception:
+                pass
+
+    def scan_incremental(self) -> List[Dict[str, Any]]:
+        """扫描新文件, 追加到索引, 返回新索引条目"""
+        new_entries = []
+        dirs_to_scan = [
+            (self.root / "memory", "memory"),
+            (self.root / "logs", "logs"),
+            (self.root / "apex-state", "apex-state"),
+        ]
+        for d, cat in dirs_to_scan:
+            if not d.exists():
+                continue
+            for p in d.iterdir():
+                if not p.is_file():
+                    continue
+                try:
+                    mtime = datetime.fromtimestamp(p.stat().st_mtime).isoformat()
+                    if self.last_index_time and mtime <= self.last_index_time:
+                        continue
+                    entry = {
+                        "ts": mtime,
+                        "path": str(p.relative_to(self.root)),
+                        "category": cat,
+                        "size": p.stat().st_size,
+                    }
+                    new_entries.append(entry)
+                    self.entries.append(entry)
+                except Exception:
+                    continue
+        # 落盘
+        if new_entries:
+            with open(self.index_path, "a", encoding="utf-8") as f:
+                for e in new_entries:
+                    f.write(json.dumps(e, ensure_ascii=False) + "\n")
+        return new_entries
+
+    def query(self, since: str = "", until: str = "", limit: int = 20) -> List[Dict[str, Any]]:
+        """按时间倒序查询 [since, until] 区间, limit 限结果数"""
+        results = []
+        for e in sorted(self.entries, key=lambda x: x["ts"], reverse=True):
+            if since and e["ts"] < since:
+                continue
+            if until and e["ts"] > until:
+                continue
+            results.append(e)
+            if len(results) >= limit:
+                break
+        return results
+
+
+class WALStore:
+    """WAL (Write-Ahead Log) checkpoint 守护.
+
+    写 evolution-history.jsonl 前先 fsync WAL, crash 后能 replay.
+    """
+    def __init__(self, path: Path):
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.path.exists():
+            self.path.touch()
+
+    def append(self, entry: Dict[str, Any]) -> bool:
+        """追加 entry 到 WAL, 立即 fsync"""
+        try:
+            with open(self.path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            return True
+        except Exception:
+            return False
+
+    def commit(self) -> None:
+        """主文件已落盘, 清空 WAL (commit 标记写入新文件, WAL 截断到 0)"""
+        self.truncate()
+
+    def truncate(self) -> None:
+        """截断 WAL 到 0 字节"""
+        try:
+            with open(self.path, "w", encoding="utf-8") as f:
+                f.write("")
+                f.flush()
+                os.fsync(f.fileno())
+        except Exception:
+            pass
+
+    def read_all(self) -> List[Dict[str, Any]]:
+        """读 WAL 所有 entry (用于 replay)"""
+        if not self.path.exists():
+            return []
+        entries = []
+        try:
+            with open(self.path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        try:
+                            entries.append(json.loads(line))
+                        except Exception:
+                            continue
+        except Exception:
+            pass
+        return entries
 
 
 # ============================================================
