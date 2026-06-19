@@ -118,7 +118,28 @@ class LLMRouter:
         )
 
     def add_from_env(self) -> None:
-        """从环境变量自动添加已配置的 Provider"""
+        """从环境变量自动添加已配置的 Provider
+
+        L3+ 2026-06-19 修复自进化学习推理缺陷 (师父 14:49 明示):
+        add_from_env 之前只看 os.environ, 但 superclaw 仓从未自动 source .env
+        (只在 shell `source .env` 后才生效). 修复: 在函数开头尝试从 cwd/.env
+        加载, 避免 gep_engine/engine/memory 调 LLM 时返 mock fallback.
+        """
+        # 1) 自动加载 cwd/.env (不覆盖已存在的 os.environ)
+        try:
+            from pathlib import Path as _P
+            _env_path = _P(".env")
+            if _env_path.exists() and _env_path.is_file():
+                for _line in _env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                    _line = _line.strip()
+                    if not _line or _line.startswith("#") or "=" not in _line:
+                        continue
+                    _k, _v = _line.split("=", 1)
+                    _k = _k.strip()
+                    _v = _v.strip().strip('"').strip("'")
+                    os.environ.setdefault(_k, _v)
+        except Exception:
+            pass  # .env 加载失败不阻断主流程
         env_map = {
             "deepseek": ("DEEPSEEK_API_KEY", "deepseek-chat",
                          "https://api.deepseek.com/chat/completions", 0.001),
@@ -128,6 +149,18 @@ class LLMRouter:
                            "https://openrouter.ai/api/v1/chat/completions", 0.005),
             "openai": ("OPENAI_API_KEY", "gpt-4o-mini",
                        "https://api.openai.com/v1/chat/completions", 0.002),
+            # L3+ 2026-06-19 4 key 多路由 (师父 14:34 全权授权后实装)
+            "agens": ("AGNES_API_KEY", "agnes-2.0-flash",
+                      "https://apihub.agnes-ai.com/v1/chat/completions", 0.0001),
+            "iamhc": ("IAMHC_API_KEY", "auto",
+                      "https://api.iamhc.cn/v1/chat/completions", 0.0001),
+            "zenmux": ("ZENMUX_API_KEY", "auto",
+                       "https://zenmux.ai/api/v1/chat/completions", 0.0001),
+            "opencode": ("OPENCODE_API_KEY", "gpt-5.5",
+                         "https://opencode.ai/zen/v1/chat/completions", 0.001),
+            "sensenova": ("SENSENOVA_API_KEY", "deepseek-v4-flash",
+                          "https://token.sensenova.cn/v1/chat/completions", 0.0001),
+
         }
 
         for name, (env_key, default_model, default_url, cost) in env_map.items():

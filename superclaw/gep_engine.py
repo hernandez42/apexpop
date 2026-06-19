@@ -157,7 +157,10 @@ class SignalExtractor:
                 pass  # 反馈提取失败不阻断主流程
 
         # 5. 用 LLM 深度分析（如果可用）
-        if self.llm and signals:
+        # L3+ 2026-06-19 修复自进化学习推理缺陷 (师父 14:49 明示)
+        # 1. signals 为空时也调 LLM 主动生成 (冷启动 fallback)
+        # 2. 显式选 agens 避免 mock fallback 回显 prompt
+        if self.llm:
             llm_signal = self._llm_extract_signals(signals)
             if llm_signal:
                 signals.extend(llm_signal)
@@ -165,38 +168,68 @@ class SignalExtractor:
         return signals
 
     def _llm_extract_signals(self, existing_signals: List[Signal]) -> List[Signal]:
-        """用 LLM 深度分析信号（发现隐藏模式）"""
-        signals_summary = "\n".join(
-            f"- [{s.severity}] {s.signal_type}: {s.pattern}"
-            for s in existing_signals[:5]
-        )
+        """用 LLM 深度分析信号（发现隐藏模式）
 
-        prompt = f"""分析以下进化信号，找出隐藏的失败模式或优化机会。
+        L3+ 2026-06-19: signals 为空时主动调 LLM 生成 hypothesis (冷启动),
+        避免空 workspace 100% 失败. 显式 provider="agnes" 避免 mock fallback.
+        """
+        # 冷启动 prompt — workspace 无历史信号时主动生成 hypothesis
+        if not existing_signals:
+            ws_path = str(getattr(self.memory, "root", "unknown"))
+            prompt = (
+                "你是一个 AI 自进化分析器。当前工作区是冷启动状态（无历史信号/无反思/无进化记录）。\n"
+                "请根据工作区根目录名和已知上下文, 主动生成 3-5 个合理的进化 hypothesis\n"
+                "（修复/优化/添加能力/补全测试等）。\n\n"
+                "输出严格 JSON 数组, 每个元素:\n"
+                "{\n"
+                '  "signal_type": "error|performance|feature|pattern",\n'
+                '  "severity": "low|medium|high|critical",\n'
+                '  "pattern": "简短描述 (≤40 字)",\n'
+                '  "context": "上下文说明 (≤80 字)"\n'
+                "}\n\n"
+                "要求:\n"
+                "1. pattern 必须可执行 (LLM 能基于此生成代码/配置变更)\n"
+                "2. 涵盖至少 2 个不同 severity (low/medium/high)\n"
+                "3. 优先考虑: 错误处理、测试覆盖、文档、监控、配置校验\n"
+                "4. 只输出 JSON 数组, 不要其他文字\n\n"
+                "工作区路径: " + ws_path
+            )
+        else:
+            signals_summary = "\n".join(
+                f"- [{s.severity}] {s.signal_type}: {s.pattern}"
+                for s in existing_signals[:5]
+            )
+            prompt = (
+                f"分析以下进化信号,找出隐藏的失败模式或优化机会。\n\n"
+                f"当前信号:\n{signals_summary}\n\n"
+                f"请输出 JSON 数组,每个元素包含:\n"
+                f"- signal_type: error/performance/feature/pattern\n"
+                f"- severity: low/medium/high/critical\n"
+                f"- pattern: 信号描述\n"
+                f"- context: 上下文\n\n"
+                f"只输出 JSON,不要其他文字。"
+            )
 
-当前信号:
-{signals_summary}
-
-请输出 JSON 数组，每个元素包含:
-- signal_type: error/performance/feature/pattern
-- severity: low/medium/high/critical
-- pattern: 信号描述
-- context: 上下文
-
-只输出 JSON，不要其他文字。"""
-
-        result = self.llm.complete(
-            [{"role": "user", "content": prompt}],
-            complexity="medium",
-        )
+        # 显式选 agens (主路由) 避免 mock fallback (mock 会回显 prompt 当 reply)
+        try:
+            result = self.llm.complete(
+                [{"role": "user", "content": prompt}],
+                provider="agens",
+                complexity="high",
+            )
+        except Exception:
+            result = self.llm.complete(
+                [{"role": "user", "content": prompt}],
+                complexity="high",
+            )
 
         if result.error or not result.content:
             return []
 
         try:
-            # 尝试解析 LLM 返回的 JSON
             content = result.content.strip()
-            if content.startswith("```"):
-                content = content.split("```")[1]
+            if content.startswith("REPLACED_FENCE"):
+                content = content.split("REPLACED_FENCE")[1]
                 if content.startswith("json"):
                     content = content[4:]
             items = json.loads(content)
@@ -206,7 +239,7 @@ class SignalExtractor:
             return [
                 Signal(
                     signal_type=item.get("signal_type", "pattern"),
-                    source="llm:analysis",
+                    source="llm:analysis" if existing_signals else "llm:cold_start",
                     severity=item.get("severity", "low"),
                     pattern=item.get("pattern", ""),
                     context=item.get("context", ""),
@@ -215,9 +248,6 @@ class SignalExtractor:
             ]
         except (json.JSONDecodeError, KeyError):
             return []
-
-
-# ============================================================
 # 策略管理器 — 对照 Evolver Strategy Manager
 # ============================================================
 
