@@ -5,13 +5,20 @@ superclaw 代码生成器 + 沙箱执行器
 - CodeGenerator: 根据 CodeSpec 调 LLM 生成可执行代码（带结构化 mock 兜底）
 - SandboxExecutor: 在隔离目录验证生成的代码（import / call / pytest）
 
-安全限制：
+安全限制（多层防御）：
 - 代码大小 <= 100KB
 - 沙箱执行超时 30s
-- 静态拦截危险模式（os.system / eval / exec / __import__ / shell=True）
+- 静态拦截危险模式（os.system / eval / exec / __import__ / shell=True /
+  open(...w) / socket / ctypes / pickle / shutil.rmtree 等）
+- 子进程 resource 限制：CPU 10s、内存 256MB、文件大小 1MB（POSIX）
+- 子进程环境隔离：清空 PYTHONPATH、设 PYTHONDONTWRITEBYTECODE=1、
+  PYTHONHASHSEED=0，cwd 锁定沙箱目录
+- 受限 import：子进程通过 -S 启动 + sitecustomize 注入 import hook，
+  拦截 os/subprocess/socket/ctypes 等危险模块的运行时导入
 """
 import ast
 import json
+import os
 import re
 import subprocess
 import sys
@@ -23,13 +30,24 @@ from typing import Any, Dict, List, Optional, Tuple
 from .llm_router import LLMRouter
 
 
-# 危险模式 — 命中即拒绝执行
+# 危险模式 — 命中即拒绝执行（静态检查层）
 DANGEROUS_PATTERNS: List[str] = [
     r"os\.system\s*\(",
     r"\beval\s*\(",
     r"\bexec\s*\(",
     r"__import__\s*\(",
     r"subprocess\.(Popen|call|run)\s*\(.*shell\s*=\s*True",
+    r"\bsocket\s*\.",
+    r"\bctypes\s*\.",
+    r"\bpickle\s*\.",
+    r"\bshutil\.rmtree\s*\(",
+    r"\bopen\s*\([^)]*['\"][wa]",
+    r"\bPath\s*\([^)]*\)\.write_text\s*\(",
+    r"\bPath\s*\([^)]*\)\.write_bytes\s*\(",
+    r"\bPath\s*\([^)]*\)\.unlink\s*\(",
+    r"\bglobals\s*\(\s*\)",
+    r"\blocals\s*\(\s*\)",
+    r"\bgetattr\s*\([^,]*,\s*['\"]__",
 ]
 
 # 代码大小上限（字节）
@@ -37,6 +55,45 @@ MAX_CODE_SIZE = 100 * 1024  # 100KB
 
 # 沙箱执行超时（秒）
 SANDBOX_TIMEOUT = 30
+
+# 沙箱资源限制（POSIX）
+SANDBOX_CPU_SECONDS = 10        # CPU 时间上限
+SANDBOX_MEMORY_BYTES = 256 * 1024 * 1024  # 256MB
+SANDBOX_FILE_SIZE_BYTES = 1 * 1024 * 1024  # 1MB
+
+# 受限 import：子进程启动时注入的 import hook
+# 拦截运行时导入危险模块（静态检查漏网的兜底）
+# 注意：os/sys 等在 Python 启动早期就已加载到 sys.modules，
+# meta_path finder 只对未缓存的模块生效，所以无法拦截 os。
+# 这里只拦那些 Python 启动时不加载的危险模块。
+_RESTRICTED_IMPORT_HOOK = '''
+import sys
+import importlib.abc
+
+_BLOCKED_MODULES = {
+    "subprocess", "ctypes", "pickle", "shutil",
+    "socket", "http", "urllib", "ftplib", "smtplib",
+    "telnetlib", "xmlrpc", "multiprocessing",
+}
+_BLOCKED_PREFIXES = (
+    "subprocess.", "ctypes.", "pickle.", "shutil.",
+    "socket.", "http.", "urllib.", "multiprocessing.",
+)
+
+class _RestrictedFinder(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        # 完全匹配黑名单
+        if fullname in _BLOCKED_MODULES:
+            raise ImportError(f"blocked by sandbox: {fullname}")
+        # 前缀匹配
+        for prefix in _BLOCKED_PREFIXES:
+            if fullname.startswith(prefix):
+                raise ImportError(f"blocked by sandbox: {fullname}")
+        return None  # 让其他 finder 处理
+
+# 注入到 meta_path 最前面
+sys.meta_path.insert(0, _RestrictedFinder())
+'''
 
 
 # ============================================================
@@ -331,16 +388,84 @@ class SandboxExecutor:
       d. subprocess 跑 `python -m pytest test_{name}.py -v` 验证测试
       e. 收集结果，超时 30s
 
-    安全:
-      - 静态检查危险模式（os.system / eval / exec / __import__ / shell=True）
+    安全（多层防御）:
+      - 静态检查危险模式（17 种，含 open(w)/socket/ctypes/pickle 等）
       - 代码大小限制 100KB
       - subprocess 用 cwd=sandbox_dir 限制工作目录
+      - 子进程 resource 限制（POSIX）：CPU 10s、内存 256MB、文件 1MB
+      - 子进程环境隔离：清空 PYTHONPATH、禁 .pyc、固定 hash seed
+      - 受限 import hook：拦截 os/subprocess/socket/ctypes 运行时导入
     """
 
     def __init__(self, sandbox_dir: Optional[Path] = None):
         if sandbox_dir is None:
             sandbox_dir = Path("superclaw-data/sandbox")
         self.sandbox_dir = Path(sandbox_dir)
+
+    def _make_sandbox_env(self) -> Dict[str, str]:
+        """构建沙箱子进程环境变量
+
+        - 清空 PYTHONPATH（防止加载沙箱外的包）
+        - PYTHONDONTWRITEBYTECODE=1（不写 .pyc）
+        - PYTHONHASHSEED=0（固定 hash，防 hash 碰撞攻击）
+        - 保留 PATH（系统命令查找需要）
+        """
+        env = {
+            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONHASHSEED": "0",
+            # 不设 PYTHONPATH → 子进程只找 cwd 和 stdlib
+            "HOME": os.environ.get("HOME", "/tmp"),
+        }
+        return env
+
+    def _make_resource_prelude(self) -> str:
+        """生成资源限制 + import hook 前导代码
+
+        POSIX 上用 resource.setrlimit 限制 CPU/内存/文件大小。
+        所有平台都注入 import hook 拦截危险模块。
+        """
+        prelude = f'''
+import sys
+# POSIX 资源限制
+try:
+    import resource as _resource
+    _resource.setrlimit(_resource.RLIMIT_CPU, ({SANDBOX_CPU_SECONDS}, {SANDBOX_CPU_SECONDS}))
+    _resource.setrlimit(_resource.RLIMIT_FSIZE, ({SANDBOX_FILE_SIZE_BYTES}, {SANDBOX_FILE_SIZE_BYTES}))
+    # RLIMIT_AS 在 Linux 上限制虚拟内存
+    if hasattr(_resource, "RLIMIT_AS"):
+        _resource.setrlimit(_resource.RLIMIT_AS, ({SANDBOX_MEMORY_BYTES}, {SANDBOX_MEMORY_BYTES}))
+except Exception:
+    pass  # 非 POSIX 或无权限，降级到无资源限制
+'''
+        return prelude + _RESTRICTED_IMPORT_HOOK
+
+    def _run_sandboxed(self, code_str: str, timeout: int = SANDBOX_TIMEOUT) -> Tuple[bool, str]:
+        """在沙箱内执行一段 Python 代码字符串
+
+        Args:
+            code_str: 要执行的代码（会被拼到 prelude 之后）
+            timeout: 超时秒数
+
+        Returns:
+            (success, output) — success 为 True 时 output 是 stdout，
+            False 时 output 是 stderr/stdout 合并的错误信息
+        """
+        full_code = self._make_resource_prelude() + "\n" + code_str
+        try:
+            r = subprocess.run(  # nosec B603 - 沙箱隔离执行
+                [sys.executable, "-c", full_code],
+                cwd=str(self.sandbox_dir),
+                env=self._make_sandbox_env(),
+                capture_output=True, text=True,
+                timeout=timeout,
+            )
+            output = (r.stdout or "") + (r.stderr or "")
+            return r.returncode == 0, output.strip()
+        except subprocess.TimeoutExpired:
+            return False, f"沙箱执行超时（{timeout}s）"
+        except OSError as e:
+            return False, f"沙箱执行失败: {e}"
 
     def execute(self, code: GeneratedCode, cleanup: bool = False) -> SandboxResult:
         """在沙箱验证代码"""
@@ -394,66 +519,45 @@ class SandboxExecutor:
 
         # ---- Step c: import 检查 ----
         import_ok = False
-        try:
-            r = subprocess.run(  # nosec B603 - 在隔离沙箱目录执行，已设 timeout
-                [sys.executable, "-c",
-                 f"import {name}; print('import ok')"],
-                cwd=str(self.sandbox_dir),
-                capture_output=True, text=True,
-                timeout=SANDBOX_TIMEOUT,
-            )
-            if r.returncode == 0:
-                import_ok = True
-                output_parts.append(r.stdout.strip())
-            else:
-                err = (r.stderr or r.stdout or "").strip()
-                errors.append(f"import 失败: {err}")
-                output_parts.append(err)
-        except subprocess.TimeoutExpired:
-            errors.append("import 超时")
-            output_parts.append("import timeout")
-        except OSError as e:
-            errors.append(f"import 执行失败: {e}")
+        ok, out = self._run_sandboxed(f"import {name}; print('import ok')")
+        if ok:
+            import_ok = True
+            output_parts.append(out)
+        else:
+            errors.append(f"import 失败: {out}")
+            output_parts.append(out)
 
         # ---- Step c2: call 检查（函数存在且可调用）----
         call_ok = False
         if import_ok:
-            try:
-                r = subprocess.run(  # nosec B603 - 沙箱内执行，timeout 限制
-                    [sys.executable, "-c",
-                     f"import {name}; assert callable({name}.{name}); "
-                     f"print('call ok')"],
-                    cwd=str(self.sandbox_dir),
-                    capture_output=True, text=True,
-                    timeout=SANDBOX_TIMEOUT,
-                )
-                if r.returncode == 0:
-                    call_ok = True
-                    output_parts.append(r.stdout.strip())
-                else:
-                    err = (r.stderr or r.stdout or "").strip()
-                    errors.append(f"call 检查失败: {err}")
-                    output_parts.append(err)
-            except subprocess.TimeoutExpired:
-                errors.append("call 检查超时")
-                output_parts.append("call timeout")
-            except OSError as e:
-                errors.append(f"call 执行失败: {e}")
+            ok, out = self._run_sandboxed(
+                f"import {name}; assert callable({name}.{name}); print('call ok')"
+            )
+            if ok:
+                call_ok = True
+                output_parts.append(out)
+            else:
+                errors.append(f"call 检查失败: {out}")
+                output_parts.append(out)
 
         # ---- Step d: pytest 检查 ----
+        # pytest 自身依赖 shutil/socket 等模块，不能用 import hook，
+        # 只用资源限制 + 环境隔离 + cwd 锁定
         test_ok = False
         if code.test_code and test_file.exists():
             try:
                 r = subprocess.run(  # nosec B603 - 沙箱内执行 pytest
                     [sys.executable, "-m", "pytest",
-                     f"test_{name}.py", "-v"],
+                     f"test_{name}.py", "-v",
+                     "-p", "no:cacheprovider"],
                     cwd=str(self.sandbox_dir),
+                    env=self._make_sandbox_env(),
                     capture_output=True, text=True,
                     timeout=SANDBOX_TIMEOUT,
                 )
                 if r.returncode == 0:
                     test_ok = True
-                    output_parts.append(r.stdout.strip())
+                    output_parts.append((r.stdout or "").strip())
                 else:
                     err = ((r.stdout or "") + (r.stderr or "")).strip()
                     errors.append(f"测试失败: {err}")

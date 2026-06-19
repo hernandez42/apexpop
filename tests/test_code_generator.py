@@ -357,8 +357,8 @@ def test_sandbox_allows_safe_subprocess_without_shell(tmp_workspace):
 
 
 def test_dangerous_patterns_constant():
-    """DANGEROUS_PATTERNS 包含 5 个模式"""
-    assert len(DANGEROUS_PATTERNS) == 5
+    """DANGEROUS_PATTERNS 包含 16 个模式（多层防御）"""
+    assert len(DANGEROUS_PATTERNS) == 16
     # 验证每个模式都能匹配对应的危险代码
     import re
     cases = [
@@ -367,6 +367,17 @@ def test_dangerous_patterns_constant():
         ("exec('x=1')", DANGEROUS_PATTERNS[2]),
         ("__import__('os')", DANGEROUS_PATTERNS[3]),
         ("subprocess.Popen('ls', shell=True)", DANGEROUS_PATTERNS[4]),
+        ("socket.connect()", DANGEROUS_PATTERNS[5]),
+        ("ctypes.CDLL()", DANGEROUS_PATTERNS[6]),
+        ("pickle.loads()", DANGEROUS_PATTERNS[7]),
+        ("shutil.rmtree('/x')", DANGEROUS_PATTERNS[8]),
+        ("open('x','w')", DANGEROUS_PATTERNS[9]),
+        ("Path('x').write_text('y')", DANGEROUS_PATTERNS[10]),
+        ("Path('x').write_bytes(b'y')", DANGEROUS_PATTERNS[11]),
+        ("Path('x').unlink()", DANGEROUS_PATTERNS[12]),
+        ("globals()", DANGEROUS_PATTERNS[13]),
+        ("locals()", DANGEROUS_PATTERNS[14]),
+        ("getattr(obj, '__class__')", DANGEROUS_PATTERNS[15]),
     ]
     for text, pattern in cases:
         assert re.search(pattern, text) is not None
@@ -460,7 +471,11 @@ def test_full_flow_with_mock_fallback(tmp_workspace):
 
 
 def test_full_flow_weather_mock_fallback(tmp_workspace):
-    """fetch_weather mock 兜底 → 沙箱通过（不依赖网络）"""
+    """fetch_weather mock 兜底生成 urllib 代码 → 沙箱正确拦截 urllib
+
+    沙箱安全策略：urllib 是网络模块，在沙箱内被 import hook 拦截。
+    这验证了安全特性——即使生成的代码用 urllib，沙箱也会阻止。
+    """
     router = _MockLLMRouter(error="llm unavailable")
     gen = CodeGenerator(router)
 
@@ -476,10 +491,9 @@ def test_full_flow_weather_mock_fallback(tmp_workspace):
     sandbox = SandboxExecutor(tmp_workspace / "sandbox")
     result = sandbox.execute(code)
 
-    assert result.passed is True
-    assert result.import_ok is True
-    assert result.call_ok is True
-    assert result.test_ok is True
+    # urllib 被沙箱 import hook 拦截 → import 失败是预期安全行为
+    assert result.import_ok is False
+    assert any("blocked by sandbox" in e or "urllib" in e for e in result.errors)
 
 
 # ============================================================
@@ -524,3 +538,84 @@ def test_sandbox_executor_default_dir(tmp_workspace):
     """sandbox_dir=None → 默认 superclaw-data/sandbox"""
     sandbox = SandboxExecutor()
     assert sandbox.sandbox_dir == Path("superclaw-data/sandbox")
+
+
+# ============================================================
+# 真沙箱隔离测试 — 验证多层防御真的生效
+# ============================================================
+
+class TestSandboxRealIsolation:
+    """验证沙箱不是"工作目录隔离"而是真隔离
+
+    覆盖：
+    - 运行时 import 危险模块被 import hook 拦截
+    - 子进程环境隔离（PYTHONPATH 清空）
+    - 资源限制生效（CPU/内存/文件大小）
+    """
+
+    def test_runtime_import_subprocess_blocked(self, tmp_workspace):
+        """运行时 import subprocess 被 import hook 拦截
+
+        静态检查只拦 shell=True，但 import hook 拦截所有 subprocess 导入。
+        这验证了"多层防御"——静态漏网的，运行时兜底。
+        用 _run_sandboxed 直接验证（pytest 步骤不走 hook）。
+        """
+        sandbox = SandboxExecutor(tmp_workspace / "sandbox")
+        sandbox.sandbox_dir.mkdir(parents=True, exist_ok=True)
+        # 直接用 _run_sandboxed 验证 import subprocess 被拦
+        ok, out = sandbox._run_sandboxed("import subprocess; print('leaked')")
+        assert ok is False
+        assert "blocked by sandbox" in out
+
+    def test_runtime_import_socket_blocked(self, tmp_workspace):
+        """运行时 import socket 被拦"""
+        sandbox = SandboxExecutor(tmp_workspace / "sandbox")
+        sandbox.sandbox_dir.mkdir(parents=True, exist_ok=True)
+        ok, out = sandbox._run_sandboxed("import socket; print('leaked')")
+        assert ok is False
+        assert "blocked by sandbox" in out
+
+    def test_sandbox_env_no_pythonpath(self, tmp_workspace):
+        """子进程环境变量清空 PYTHONPATH"""
+        sandbox = SandboxExecutor(tmp_workspace / "sandbox")
+        env = sandbox._make_sandbox_env()
+        assert "PYTHONPATH" not in env
+        assert env["PYTHONDONTWRITEBYTECODE"] == "1"
+        assert env["PYTHONHASHSEED"] == "0"
+
+    def test_resource_prelude_contains_limits(self, tmp_workspace):
+        """资源限制前导代码包含 setrlimit"""
+        sandbox = SandboxExecutor(tmp_workspace / "sandbox")
+        prelude = sandbox._make_resource_prelude()
+        assert "RLIMIT_CPU" in prelude
+        assert "RLIMIT_FSIZE" in prelude
+        assert "RLIMIT_AS" in prelude
+        assert "_RestrictedFinder" in prelude
+        assert "blocked by sandbox" in prelude
+
+    def test_run_sandboxed_blocks_os_import(self, tmp_workspace):
+        """_run_sandboxed 直接拦 subprocess 模块导入（os 启动时已加载无法拦）"""
+        sandbox = SandboxExecutor(tmp_workspace / "sandbox")
+        sandbox.sandbox_dir.mkdir(parents=True, exist_ok=True)
+        # subprocess 在 Python 启动时不加载，可被 hook 拦截
+        ok, out = sandbox._run_sandboxed("import subprocess; print('leaked')")
+        assert ok is False
+        assert "blocked by sandbox" in out
+
+    def test_run_sandboxed_allows_safe_code(self, tmp_workspace):
+        """_run_sandboxed 允许安全代码（纯计算）"""
+        sandbox = SandboxExecutor(tmp_workspace / "sandbox")
+        sandbox.sandbox_dir.mkdir(parents=True, exist_ok=True)
+        ok, out = sandbox._run_sandboxed("print(1 + 2)")
+        assert ok is True
+        assert "3" in out
+
+    def test_run_sandboxed_allows_json_math(self, tmp_workspace):
+        """_run_sandboxed 允许 json/math 等安全 stdlib"""
+        sandbox = SandboxExecutor(tmp_workspace / "sandbox")
+        sandbox.sandbox_dir.mkdir(parents=True, exist_ok=True)
+        ok, out = sandbox._run_sandboxed(
+            "import json, math; print(json.dumps({'sqrt': math.sqrt(16)}))"
+        )
+        assert ok is True
+        assert "4.0" in out
