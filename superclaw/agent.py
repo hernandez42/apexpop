@@ -26,7 +26,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logging.basicConfig(
     level=logging.INFO,
@@ -755,7 +755,7 @@ FINAL: <用自然语言整合推理过程与工具结果，给出完整答案>
             final_answer = raw
             success = True
             if verbose:
-                print(f"  │╰─ ✅ FINAL — 接受 LLM 自然语言答案")
+                print("  │╰─ ✅ FINAL — 接受 LLM 自然语言答案")
             break
 
         # 超过 max_steps 仍未 FINAL — 再调一次 LLM 让它总结已有信息（不计入 iterations）
@@ -1160,7 +1160,7 @@ class Agent:
             pass
 
     # ============ 回退路径: 旧的 LLM 驱动工具调用循环 ============
-    def _llm_driven_tool_loop(self, user_input: str, session: "Session",
+    def _llm_driven_tool_loop(self, user_input: str, session: object,
                                result: "AgentResult", *, verbose: bool,
                                max_iter: int) -> str:
         """旧的工具调用循环 —— 本地无法识别意图时使用
@@ -1363,7 +1363,7 @@ class Agent:
         if memory_text_hint and str(memory_text_hint).strip():
             extra_ctx_lines.append(f"[Agent 记忆检索结果]\n{memory_text_hint[:500]}")
         if verbose and memory_text_hint:
-            print(f"[步骤3] 记忆检索: 命中本地 md 记忆")
+            print("[步骤3] 记忆检索: 命中本地 md 记忆")
 
         extra_context = "\n".join(extra_ctx_lines) if extra_ctx_lines else ""
 

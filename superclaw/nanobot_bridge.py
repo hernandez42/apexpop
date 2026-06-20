@@ -124,7 +124,6 @@ class NanobotBridge:
     # --------------------------------------------------------
     def is_reachable(self) -> bool:
         """HTTP /ping 或 /status 探测；失败就 False，不抛异常"""
-        t0 = time.time()
         ok, _, _ = _http_get_json(f"http://{self.host}:{self.port}/status", self.timeout)
         if ok:
             return True
