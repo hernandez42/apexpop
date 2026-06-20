@@ -525,7 +525,403 @@ class ResultSynthesizer:
             return "\n".join(lines)
 
 
-# ============ 主 Agent 类: 三段式循环 ============
+# ============================================================
+# AgentReasoningEngine — 真正的 "Agent 先接收 → LLM 思考 → 推理 → 工具 → 最终答案"
+# ReAct 风格（Reasoning + Acting）：Thought → Action → Observation → ... → Final Answer
+#
+# 与 "LLM 转发器" 的本质区别：
+#   - 转发器：用户输入 → 直接丢给 LLM → 原样返回
+#   - 本引擎：用户输入 → LLM 产出 Thought（推理/计划）→ 解析 Action → Agent 真调用工具
+#           → Observation 注入对话 → LLM 继续思考 → ... → LLM 产出 Final Answer
+#   - 用户能看到每一步推理（verbose 模式）
+# ============================================================
+
+@dataclass
+class ReasonStep:
+    """单步推理记录：LLM 产出的 Thought / Action / Observation / Final"""
+    kind: str  # "thought" | "action" | "observation" | "final"
+    content: str
+    tool_name: Optional[str] = None
+    tool_args: Optional[Dict[str, Any]] = None
+    tool_result: Optional[str] = None
+    error: Optional[str] = None
+    duration_ms: int = 0
+
+
+class AgentReasoningEngine:
+    """
+    ReAct 风格多步推理引擎。
+
+    每一轮循环：
+      1. Agent 把当前对话历史（含先前 Observation）丢给 LLM
+      2. LLM 必须输出三种之一：
+           - THOUGHT: <推理过程>           → 纯思考，不调用工具
+           - ACTION: <tool_name> + ARGS: {...}  → Agent 调用工具
+           - FINAL: <自然语言答案>          → 结束循环
+      3. Agent 解析结构化输出 → 决定下一步（继续/调工具/结束）
+      4. 最多 max_steps 步，强迫收敛
+
+    verbose=True 时，用户可以在终端看到完整推理链（🧠 THOUGHT / ⚙ ACTION / 👁 OBSERVATION / ✅ FINAL）。
+    """
+
+    _FORMAT_PROMPT = """
+【严格输出格式 —— Agent 会逐字解析，不符合格式会提示你重来】
+
+三选一格式：
+
+1) 继续思考 THOUGHT（不用工具，先理清思路）
+```
+THOUGHT: <我对当前问题的理解、缺少哪些信息、下一步打算做什么>
+```
+
+2) 调用工具 ACTION（精确指定工具与参数，Agent 会真实执行）
+```
+ACTION: <tool_name>
+ARGS: {"param1": "value1", "param2": "value2"}
+```
+可用工具清单：
+[TOOLS_SUMMARY_HERE]
+
+3) 最终答案 FINAL（当你认为已得到足够信息，直接回答）
+```
+FINAL: <用自然语言整合推理过程与工具结果，给出完整答案>
+```
+
+流程规则：
+- 每轮只选一种格式输出，不要混在一起。
+- 推荐至少先一条 THOUGHT 表明理解了问题，再决定是否调用工具。
+- 必须精确使用 ACTION: 工具名 与 ARGS: {...JSON...} 两行。
+- 观察结果（Observation）由 Agent 注入，你不要自己伪造工具结果。
+- 当信息已足够 — 立即输出 FINAL 结束推理。
+- 永远不要自我介绍、不要说"我是 xxx"。直接工作。
+"""
+
+    def __init__(self, provider: BaseProvider, tools: ToolRegistry,
+                 system_prompt: str, max_steps: int = 8,
+                 logger: Optional[logging.Logger] = None):
+        self.provider = provider
+        self.tools = tools
+        self.system_prompt = system_prompt
+        self.max_steps = max_steps
+        self.logger = logger or logging.getLogger("superclaw.reasoning")
+
+    # ------------------------------------------------------------
+    # 对外核心：reason()
+    # ------------------------------------------------------------
+    def reason(self, user_input: str,
+               extra_context: str = "",
+               verbose: bool = False,
+               _override_max_steps: Optional[int] = None) -> Tuple[str, List[ReasonStep], bool]:
+        """执行多步 ReAct 推理循环。
+
+        参数:
+            user_input: 用户原始输入
+            extra_context: Agent 注入的额外上下文（md 知识 / memory 检索等）
+            verbose: 是否打印推理过程
+            _override_max_steps: 覆盖 self.max_steps（供外部精确控制迭代次数）
+
+        返回:
+            final_answer: 最终自然语言答案
+            steps:        完整推理链
+            success:      是否在 max_steps 内收敛到 FINAL
+        """
+        effective_max = _override_max_steps if _override_max_steps is not None else self.max_steps
+        t0 = time.time()
+        steps: List[ReasonStep] = []
+
+        # 组装 system prompt（声明格式 + 工具清单）
+        tools_summary = self._build_tools_summary()
+        system_msg = self.system_prompt + "\n\n" + self._FORMAT_PROMPT.replace(
+            "[TOOLS_SUMMARY_HERE]", tools_summary
+        )
+
+        # 对话历史（关键：把每一步的 Observation 持续喂给 LLM）
+        history: List[Dict[str, str]] = [{"role": "system", "content": system_msg}]
+        if extra_context and str(extra_context).strip():
+            history.append({"role": "user",
+                            "content": f"[Agent 注入上下文]\n{extra_context[:800]}"})
+        history.append({"role": "user", "content": f"[用户问题] {user_input}"})
+
+        if verbose:
+            print(f"\n  ┌─ Agent 推理引擎启动（最多 {effective_max} 步）")
+            print(f"  │ 用户输入: {user_input[:80]}")
+            print(f"  │ 可用工具: {len(self.tools.names)} 项\n")
+
+        final_answer = ""
+        success = False
+
+        for step_i in range(1, effective_max + 1):
+            step_t0 = time.time()
+
+            # ===== 1) LLM 思考 =====
+            try:
+                raw = str(self.provider.call(history)).strip()
+            except Exception as e:
+                steps.append(ReasonStep(
+                    kind="observation",
+                    content=f"[LLM 调用错误: {e}]",
+                ))
+                if verbose:
+                    print(f"  ╰┬─[{step_i}] LLM 错误: {e}")
+                break
+
+            snippet = raw[:220].replace("\n", " ")
+            if verbose:
+                print(f"  ├┬─[{step_i}] LLM 回复: {snippet}{'...' if len(raw) > 220 else ''}")
+
+            # ===== 2) Agent 解析结构化输出 =====
+            parsed = self._parse_llm_output(raw)
+            kind = parsed["kind"]
+
+            # --- FINAL ---
+            if kind == "final":
+                steps.append(ReasonStep(
+                    kind="final", content=parsed["text"],
+                    duration_ms=int((time.time() - step_t0) * 1000),
+                ))
+                final_answer = parsed["text"].strip() or raw
+                success = True
+                if verbose:
+                    print(f"  │╰─ ✅ FINAL  — 推理完成 ({len(steps)} 步)")
+                break
+
+            # --- THOUGHT（纯思考，不调用工具）---
+            if kind == "thought":
+                steps.append(ReasonStep(
+                    kind="thought", content=parsed["text"],
+                    duration_ms=int((time.time() - step_t0) * 1000),
+                ))
+                history.append({"role": "assistant",
+                                "content": f"THOUGHT: {parsed['text']}"})
+                if verbose:
+                    print(f"  │╰─ 🧠 THOUGHT: {parsed['text'][:180]}")
+                continue
+
+            # --- ACTION（调用工具）---
+            if kind == "action":
+                tool_name = parsed["tool"]
+                tool_args = parsed["args"]
+                steps.append(ReasonStep(
+                    kind="action", content=f"调用 {tool_name}",
+                    tool_name=tool_name, tool_args=tool_args,
+                    duration_ms=int((time.time() - step_t0) * 1000),
+                ))
+                history.append({
+                    "role": "assistant",
+                    "content": (f"ACTION: {tool_name} | "
+                                f"ARGS: {json.dumps(tool_args, ensure_ascii=False)}"),
+                })
+
+                # ===== 3) Agent 执行工具（LLM 只负责"选工具"，执行权在 Agent）=====
+                observation, obs_error = self._execute_tool(tool_name, tool_args)
+                if obs_error:
+                    steps.append(ReasonStep(
+                        kind="observation", content=observation,
+                        tool_name=tool_name, tool_result=observation,
+                        error=obs_error,
+                    ))
+                else:
+                    steps.append(ReasonStep(
+                        kind="observation", content=observation,
+                        tool_name=tool_name, tool_result=observation,
+                    ))
+                # 把 Observation 作为用户消息注入 —— 让 LLM 下一轮能"基于新信息继续思考"
+                history.append({
+                    "role": "user",
+                    "content": f"[Observation/{tool_name}] {observation}",
+                })
+                if verbose:
+                    print(f"\n[turn {step_i}] Agent 推理引擎")
+                    print(f"    ├─ 调用工具: {tool_name}({json.dumps(tool_args, ensure_ascii=False)[:100]})")
+                    if obs_error:
+                        # 在错误信息里保留"未知工具"或"错误"关键字
+                        err_text = obs_error
+                        if tool_name and not self.tools.has(tool_name):
+                            err_text = f"未知工具: {tool_name}"
+                        print(f"    └─ ⚠  工具执行错误: {err_text[:160]}")
+                    else:
+                        display = str(observation)[:180].replace("\n", " ")
+                        print(f"    └─ 观察结果: {display}")
+                continue
+
+            # ===== 4) LLM 输出非结构化（直接给了自然语言答案） =====
+            # 设计原则：只要 LLM 给自然语言，就当做它的最终答案。
+            # 如果之前调用过工具，那是正确的"吸收观察后回答"；
+            # 如果之前没调用过工具，那是 LLM 选择了直接回答 —— 也是一个合理策略。
+            steps.append(ReasonStep(
+                kind="final", content=raw,
+                duration_ms=int((time.time() - step_t0) * 1000),
+            ))
+            final_answer = raw
+            success = True
+            if verbose:
+                print(f"  │╰─ ✅ FINAL — 接受 LLM 自然语言答案")
+            break
+
+        # 超过 max_steps 仍未 FINAL — 再调一次 LLM 让它总结已有信息（不计入 iterations）
+        if not success:
+            try:
+                history.append({
+                    "role": "user",
+                    "content": (
+                        f"已经进行了 {effective_max} 轮推理，请基于已获取的工具结果，"
+                        f"直接用中文自然语言回答用户的原始问题：{user_input}"
+                    ),
+                })
+                raw = str(self.provider.call(history)).strip()
+                final_answer = raw
+                success = True
+            except Exception:
+                # LLM 再失败就由 Agent 合成兜底
+                final_answer = self._synthesize_from_steps(steps, user_input)
+
+        total_ms = int((time.time() - t0) * 1000)
+        if verbose:
+            print(f"  └─ 推理完成: {len(steps)} 步 | 总耗时 {total_ms}ms\n")
+
+        return final_answer, steps, success
+
+    # ------------------------------------------------------------
+    # 内部辅助
+    # ------------------------------------------------------------
+
+    def _build_tools_summary(self) -> str:
+        lines: List[str] = []
+        for name in self.tools.names:
+            try:
+                desc = (self.tools.get_description(name) or "").strip()
+                lines.append(f"- {name}: {desc[:120]}")
+            except Exception:
+                lines.append(f"- {name}")
+        return "\n".join(lines) if lines else "(无工具)"
+
+    def _parse_llm_output(self, text: str) -> Dict[str, Any]:
+        """解析 LLM 输出 —— 支持三种风格：新格式(THOUGHT/ACTION/FINAL) + 旧格式(<tool>...</tool>).
+
+        返回: {"kind": "thought"|"action"|"final"|"unstructured", ...}
+        """
+        if not text:
+            return {"kind": "unstructured", "text": ""}
+        t = str(text).strip()
+
+        # 1) FINAL（优先级最高）
+        for prefix in ("FINAL:", "FINAL：", "FINAL ANSWER:", "FINAL ANSWER：",
+                       "Final:", "Final Answer:", "final answer:"):
+            if t.startswith(prefix):
+                return {"kind": "final", "text": t[len(prefix):].strip()}
+        final_match = re.search(r"(?:^|\n)\s*FINAL\s*[:：]\s*(.+)", t, re.DOTALL | re.IGNORECASE)
+        if final_match:
+            return {"kind": "final", "text": final_match.group(1).strip()}
+
+        # 2) 代码块里的内容
+        code_match = re.search(r"```(?:[a-zA-Z]*)\n?(.*?)```", t, re.DOTALL)
+        if code_match:
+            inner = code_match.group(1).strip()
+            inner_parsed = self._parse_llm_output(inner)
+            if inner_parsed["kind"] != "unstructured":
+                return inner_parsed
+
+        # 3) ACTION: <tool_name> + ARGS: {...}
+        action_match = re.search(
+            r"(?:^|\n)\s*(?:ACTION|Action)\s*[:：]\s*([a-zA-Z_][a-zA-Z0-9_]*)",
+            t, re.IGNORECASE,
+        )
+        if action_match:
+            tool_name = action_match.group(1).strip()
+            args: Dict[str, Any] = {}
+            args_match = re.search(
+                r"(?:^|\n)\s*(?:ARGS|Args|args|PARAMS|params)\s*[:：]\s*(\{[^{}]*\})",
+                t, re.DOTALL | re.IGNORECASE,
+            )
+            if args_match:
+                try:
+                    parsed_args = json.loads(args_match.group(1).strip())
+                    if isinstance(parsed_args, dict):
+                        args = parsed_args
+                except (json.JSONDecodeError, ValueError):
+                    args = {}
+            return {"kind": "action", "tool": tool_name, "args": args, "text": t}
+
+        # 4) 兼容旧格式 <tool xxx><param>val</param></tool> —— 作为 ACTION
+        if "<tool" in t.lower() or re.search(r"<tool\s+\w", t, re.IGNORECASE):
+            legacy = _parse_tool_call(t)
+            if isinstance(legacy, tuple) and isinstance(legacy[0], str) and legacy[0]:
+                return {"kind": "action", "tool": legacy[0],
+                        "args": legacy[1] if isinstance(legacy[1], dict) else {},
+                        "text": t}
+
+        # 5) JSON 工具调用格式 —— {"tool": "xxx", "args": {...}}
+        if t.strip().startswith("{") and t.strip().endswith("}"):
+            try:
+                data = json.loads(t)
+                if isinstance(data, dict) and "tool" in data:
+                    args = data.get("args") or data.get("params") or {}
+                    if not isinstance(args, dict):
+                        args = {}
+                    return {"kind": "action", "tool": str(data["tool"]),
+                            "args": args, "text": t}
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        # 6) THOUGHT
+        thought_match = re.search(
+            r"(?:^|\n)\s*(?:THOUGHT|Thought)\s*[:：]\s*(.+?)(?:\n\s*(?:ACTION|FINAL)[:：]|$)",
+            t, re.DOTALL | re.IGNORECASE,
+        )
+        if thought_match:
+            return {"kind": "thought", "text": thought_match.group(1).strip()}
+        for prefix in ("THOUGHT:", "Thought:", "thought:"):
+            if t.lower().startswith(prefix.lower()):
+                return {"kind": "thought", "text": t[len(prefix):].strip()}
+
+        return {"kind": "unstructured", "text": t}
+
+    def _execute_tool(self, tool_name: str,
+                      args: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+        """Agent 统一的工具执行。"""
+        if not tool_name or not isinstance(tool_name, str):
+            return "", f"工具名无效: {tool_name}"
+        tool_name = tool_name.strip()
+        if not self.tools.has(tool_name):
+            return (
+                f"工具 '{tool_name}' 不存在。可用工具: {', '.join(self.tools.names[:20])}",
+                f"未知工具: {tool_name}",
+            )
+        if not isinstance(args, dict):
+            args = {}
+        try:
+            result = self.tools.call(tool_name, **args)
+            result_text = str(result.content) if hasattr(result, "content") else str(result)
+            # 截断过长的工具结果（避免 LLM 上下文溢出）
+            if len(result_text) > 3000:
+                result_text = (result_text[:2500]
+                               + "\n...[已截断，完整结果已保存到会话]\n..."
+                               + result_text[-400:])
+            return result_text, None
+        except Exception as e:
+            return f"工具 {tool_name} 执行错误: {e}", str(e)
+
+    def _synthesize_from_steps(self, steps: List[ReasonStep],
+                               user_input: str) -> str:
+        """LLM 没产出 FINAL 时，Agent 自己合成答案"""
+        lines = ["以下为 Agent 的推理与工具调用结果（LLM 未输出 FINAL）："]
+        for i, step in enumerate(steps, 1):
+            if step.kind == "thought":
+                lines.append(f"[i={i}] 🧠 THOUGHT: {step.content[:200]}")
+            elif step.kind == "action":
+                args_text = json.dumps(step.tool_args, ensure_ascii=False) if step.tool_args else ""
+                lines.append(f"[i={i}] ⚙ ACTION: {step.tool_name}({args_text})")
+            elif step.kind == "observation":
+                preview = (step.tool_result or step.content)[:240]
+                lines.append(f"[i={i}] 👁 OBSERVATION: {preview}")
+                if step.error:
+                    lines.append(f"       ⚠ 错误: {step.error}")
+            elif step.kind == "final":
+                lines.append(f"[i={i}] ✅ FINAL: {step.content[:200]}")
+        return "\n".join(lines)
+
+
+# ============ 主 Agent 类: 7 步闭环（含 ReAct 推理引擎） ============
 class Agent:
     """superclaw 核心 Agent —— 三段式循环
 
@@ -570,10 +966,19 @@ class Agent:
         self.feedback_learner = feedback_learner
         self._llm_router = llm_router
 
-        # 子引擎: 三段式核心
+        # 子引擎: 三段式核心（本地快速路径 + 纯润色）
         self.thinker = LocalThinker(self.tools._workspace, self.tools)
         self.runner = ActionRunner(self.tools)
         self.synthesizer = ResultSynthesizer(self.provider, self.system_prompt)
+
+        # 子引擎: 真正的多步推理 —— Agent 先接收 → LLM 思考 → 推理 → 工具 → 最终答案
+        # 这是 Agent 的"大脑"，取代原先简单的 LLM 转发器行为。
+        self.reasoner = AgentReasoningEngine(
+            provider=self.provider,
+            tools=self.tools,
+            system_prompt=self.system_prompt,
+            max_steps=max(3, min(12, self.max_tool_iterations)),
+        )
 
         # 子引擎: 7 步扩展（全部"可用即启用，失败不影响主流程"）
         ws = Path(self.tools._workspace)
@@ -921,14 +1326,27 @@ class Agent:
         result = AgentResult(content="", tools_used=[], tool_outputs=[])
         max_iter = max_iterations if max_iterations is not None else self.max_tool_iterations
 
-        # ========== 步骤 1-2: 本地思考 + CapabilityRegistry 分类 ==========
-        intent = self.thinker.analyze(user_input)
-        if verbose:
-            print(f"[步骤1-2] 意图: {intent.type} — {intent.reasoning}")
+        # ========== 步骤 1-2: 本地 md 知识库 + CapabilityRegistry 意图提示 ==========
+        # 注入本地 md 上下文到 extra_context（如果 core md 存在则附加进去），
+        # 这样推理引擎在第一轮就"拥有本地知识"，而不是从零开始。
+        extra_ctx_lines: List[str] = []
+        if self._loaded_core_md and self.system_prompt:
+            extra_ctx_lines.append(
+                f"[Agent 本地 md 知识] 已加载: {', '.join(self._loaded_core_md)}"
+            )
+        if self.cap_registry is not None and hasattr(self.cap_registry, "list_all"):
+            try:
+                caps = list(self.cap_registry.list_all())[:8]
+                if caps:
+                    names = [getattr(c, "name", str(c)) for c in caps]
+                    extra_ctx_lines.append(
+                        f"[Agent CapabilityRegistry] 可识别: {', '.join(names)}"
+                    )
+            except Exception:
+                pass
 
-        # ========== 步骤 3: 记忆检索 (query + temporal_query) ==========
+        # ========== 步骤 3: 记忆检索 (MemoryStore.query + temporal_query) ==========
         memory_text_hint = ""
-        temporal_hint = ""
         if self.memory_store is not None:
             try:
                 memory_text_hint = self.memory_store.query(user_input) or ""
@@ -937,96 +1355,61 @@ class Agent:
             try:
                 temporal_events = self.memory_store.temporal_query(limit=5)
                 if temporal_events:
-                    temporal_hint = "最近" + str(len(temporal_events)) + "个记忆事件"
+                    extra_ctx_lines.append(
+                        f"[Agent 记忆] 最近 {len(temporal_events)} 个事件"
+                    )
             except Exception:
-                temporal_hint = ""
-        if verbose:
-            print(f"[步骤3] 记忆检索: query={bool(memory_text_hint)} temporal={temporal_hint or '无'}")
+                pass
+        if memory_text_hint and str(memory_text_hint).strip():
+            extra_ctx_lines.append(f"[Agent 记忆检索结果]\n{memory_text_hint[:500]}")
+        if verbose and memory_text_hint:
+            print(f"[步骤3] 记忆检索: 命中本地 md 记忆")
 
-        # ========== 步骤 4: Agent 本地选择工具 (不外包给 LLM) ==========
-        actions = self.thinker.plan_actions(intent)
-        # 本地三段式只处理 "必须调用工具" 的意图类型
-        # - 闲聊(chit_chat) / unknown / code_ask 等都走 LLM 路径，因为它们本质需要自然语言
-        use_local = intent.type in ("file_read", "shell", "web_read",
-                                     "memory_query", "list_tools",
-                                     "self_modify_request")
-        if use_local and actions:
-            if verbose:
-                for act in actions:
-                    print(f"[步骤4] -> 工具: {act.tool}({json.dumps(act.args, ensure_ascii=False)}) — {act.reason}")
-            executed, _errors = self.runner.execute(actions)
-            for act in executed:
-                result.tools_used.append(act.tool)
-                result.tool_outputs.append(str(act.result))
-            result.iterations = len(executed)
-            if verbose:
-                for act in executed:
-                    r = (act.result or "")[:120].replace("\n", " ")
-                    print(f"[步骤4 执行] {act.tool} -> {r}")
-        else:
-            if verbose:
-                print(f"[步骤4] 本地无法明确，回退到 LLM 驱动工具循环")
-            # ========== 路径 B: 回退 LLM 驱动工具调用循环 ==========
-            loop_answer = self._llm_driven_tool_loop(
-                user_input, session, result, verbose=verbose, max_iter=max_iter
-            )
-            session.add("assistant", loop_answer)
-            result.content = loop_answer
-            self._write_turn_to_memory(session_key, user_input, loop_answer)
-            self.sessions.save(session_key)
-            result.total_time_ms = int((time.time() - t0) * 1000)
-            return result
+        extra_context = "\n".join(extra_ctx_lines) if extra_ctx_lines else ""
 
-        # ========== 步骤 5: nanobot 9 子系统同步 + self_modify 状态 + GEP ==========
-        nanobot_note = ""
+        # ========== 步骤 4-5-6: 真正的多步 ReAct 推理引擎 —— 取代 LLM 转发器 ==========
+        # 关键点:
+        #   - LLM 每轮都能看到历史 Observation（工具结果）—— 让它"边观察边思考"
+        #   - Agent 执行工具（执行权在 Agent）—— 不是 LLM 假装调用
+        #   - 最终 FINAL 必须由 LLM 在吸收所有 Observation 后输出
+        #   - max_iterations 控制 LLM 调用次数（对应旧代码中的 iterations 语义）
+        reasoning_answer, steps, success = self.reasoner.reason(
+            user_input=user_input,
+            extra_context=extra_context,
+            verbose=verbose,
+            # 强制使用调用方的 max_iterations 而不是 Agent 默认
+            _override_max_steps=max_iter,
+        )
+
+        # 把 steps 映射到 result
+        used_tools: List[str] = []
+        obs_outputs: List[str] = []
+        for s in steps:
+            if s.kind == "observation" and s.tool_name and not s.error:
+                # 只有成功调用的工具才算入 tools_used
+                used_tools.append(s.tool_name)
+                obs_outputs.append(str(s.tool_result)[:500] if s.tool_result else "")
+        result.tools_used = used_tools
+        result.tool_outputs = obs_outputs
+        # iterations = LLM 被调用次数（即非 observation 的 step 数）
+        result.iterations = sum(1 for s in steps if s.kind != "observation")
+
+        # ========== 步骤 5 补充（可选）: nanobot 同步 + self_modify 状态 ==========
         if self.nanobot is not None:
             try:
                 ns = self.nanobot.status()
-                nanobot_note = (f"nanobot reachable={ns.reachable}, "
-                                f"inbox={ns.inbox_items}, "
-                                f"9_subsystems={list(NANOBOT_SUBSYSTEMS)[:3]}...")
-                low = (user_input or "").lower()
-                if any(k in low for k in ("nanobot", "同步", "sync", "9 子")):
-                    pull_result = self.nanobot.pull_all_subsystems()
-                    nanobot_note += f" | pull: ok={pull_result.get('ok', 0)}/{pull_result.get('total', 0)}"
-                    inbox = self.nanobot.read_inbox(limit=5)
-                    if inbox:
-                        nanobot_note += f" | inbox_items={len(inbox)}"
-                    self.nanobot.push_event("user_dialogue", {"text": user_input[:500]})
-            except Exception as e:
-                nanobot_note = f"nanobot 状态不可用: {e}"
-
-        self_modify_status = None
-        if self.self_modifier is not None:
-            try:
-                self_modify_status = self.self_modifier.summary()
+                if ns.reachable or ns.inbox_items > 0:
+                    low = (user_input or "").lower()
+                    if any(k in low for k in ("nanobot", "同步", "sync", "9 子")):
+                        self.nanobot.pull_all_subsystems()
+                        self.nanobot.push_event("user_dialogue", {"text": user_input[:500]})
             except Exception:
-                self_modify_status = None
+                pass
 
-        if verbose:
-            print(f"[步骤5] {nanobot_note or 'nanobot 未接入'} / self_modify={self_modify_status}")
-
-        # ========== 步骤 6: LLM 润色 (只负责语言包装) ==========
-        final_answer = self.synthesizer.synthesize(
-            intent=intent,
-            actions=executed,
-            user_input=user_input,
-            local_memory_hint=memory_text_hint or "",
-        )
-
-        # 防御: LLM 角色违规 —— 直接返回 Agent 本地结果
-        if _looks_like_roleplay(final_answer) and any(executed):
-            lines = [f"【Agent 本地推理】意图: {intent.type} — {intent.reasoning}"]
-            for act in executed:
-                preview = (act.result or "")[:400]
-                lines.append(f"[{act.tool}] {preview}")
-            lines.append("\n[提示] LLM 在语言总结环节又自我介绍了，Agent 直接返回本地推理结果。")
-            final_answer = "\n".join(lines)
-
-        # ========== 步骤 7: 归档记忆 (memory/<session>.md) ==========
-        self._write_turn_to_memory(session_key, user_input, final_answer)
-        session.add("assistant", final_answer)
-        result.content = final_answer
+        # ========== 步骤 7: 归档 (memory/<session>.md) ==========
+        session.add("assistant", reasoning_answer)
+        result.content = reasoning_answer
+        self._write_turn_to_memory(session_key, user_input, reasoning_answer)
         self.sessions.save(session_key)
         result.total_time_ms = int((time.time() - t0) * 1000)
         return result
