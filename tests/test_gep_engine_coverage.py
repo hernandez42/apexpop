@@ -48,7 +48,7 @@ class MockLLMRouter:
         })
         prompt = messages[0]["content"] if messages else ""
 
-        if "分析以下进化信号" in prompt:
+        if "分析以下进化信号" in prompt or "自进化分析器" in prompt or "冷启动状态" in prompt:
             return CompletionResult(
                 content=self._signal_content if self._signal_content is not None else "",
                 provider="mock", model="mock",
@@ -201,13 +201,15 @@ def test_signal_extractor_init(tmp_workspace):
 
 
 def test_signal_extractor_scan_empty(tmp_workspace):
-    """空记忆 → 无信号，不调用 LLM（覆盖 52-103 的空路径）"""
+    """空记忆 → 冷启动逻辑触发 LLM，返回空内容 → 无信号"""
     memory = MemoryStore(tmp_workspace)
-    llm = MockLLMRouter()
+    llm = MockLLMRouter()  # cold_start 返回空内容
     extractor = SignalExtractor(memory, llm)
     signals = extractor.scan()
+    # 冷启动 LLM 返回空内容 → 不生成信号
     assert signals == []
-    assert len(llm.calls) == 0  # 无信号时不调用 LLM
+    # 冷启动仍触发 1 次 LLM 调用（即使返回空）
+    assert len(llm.calls) == 1
 
 
 def test_signal_extractor_scan_from_gaps(tmp_workspace):

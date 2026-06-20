@@ -233,8 +233,16 @@ class SignalExtractor:
             content = result.content.strip()
             if content.startswith("REPLACED_FENCE"):
                 content = content.split("REPLACED_FENCE")[1]
-                if content.startswith("json"):
-                    content = content[4:]
+            if content.startswith("```"):
+                # 去掉 ```json ... ``` 或 ``` ... ```
+                content = content[3:]
+                for _lp in ("json\n", "json ", "```\n", "``` ", "\n", " "):
+                    if content.startswith(_lp):
+                        content = content[len(_lp):]
+                        break
+                content = content.rstrip("\n `").rstrip("```").rstrip("\n `")
+            elif content.startswith("json"):
+                content = content[4:]
             items = json.loads(content)
             if not isinstance(items, list):
                 items = [items]

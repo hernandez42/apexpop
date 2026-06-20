@@ -1019,7 +1019,7 @@ class Agent:
         self.max_tool_iterations = self.cfg.tools.max_tool_iterations
         self.loaded_skills: List[str] = []
         self.feedback_learner = feedback_learner
-        self._llm_router = llm_router
+        self._llm_router = provider or llm_router
 
         # 子引擎: 三段式核心（本地快速路径 + 纯润色）
         self.thinker = LocalThinker(self.tools._workspace, self.tools)
@@ -1088,16 +1088,48 @@ class Agent:
         else:
             self.self_modifier = None
 
-        # 步骤 5c: GEPEngine（连接到三核融合循环，非"状态探查"）
+        # 步骤 5c: GEPEngine — 传入真实模块，启用真正的代码生成+沙箱+验证+注册
         self.gep_engine = gep_engine
         if self.gep_engine is None and _GEP_AVAILABLE and GEPEngine is not None:
             try:
-                # 优先构造 GEPEngine（用当前 Agent 的 memory_store + cap_registry）
+                from superclaw.code_generator import CodeGenerator
+                from superclaw.dynamic_loader import DynamicToolLoader
+                from superclaw.evolution_validator import (
+                    EvolutionValidator, SnapshotManager,
+                )
+                from superclaw.tools import ToolRegistry
+
+                # 实例化真实模块（这些都有完整实现，不是空壳）
+                code_gen = CodeGenerator(llm_router=self._llm_router)
+                sandbox_exec = None
+                try:
+                    from superclaw.code_generator import SandboxExecutor
+                    sandbox_exec = SandboxExecutor()
+                except Exception:
+                    sandbox_exec = None
+
+                # DynamicToolLoader 需要 ToolRegistry，它本身就是 self.tools
+                dyn_loader = DynamicToolLoader(tool_registry=self.tools)
+
+                # EvolutionValidator 需要 SnapshotManager + TestRunner
+                evo_validator = None
+                try:
+                    evo_validator = EvolutionValidator(
+                        project_root=ws,
+                        snapshot_mgr=SnapshotManager(ws / "snapshots"),
+                    )
+                except Exception:
+                    evo_validator = None
+
                 self.gep_engine = GEPEngine(
                     memory=self.memory_store,
                     llm=self._llm_router,
                     capability_registry=self.cap_registry,
                     workspace=ws,
+                    code_generator=code_gen,
+                    sandbox_executor=sandbox_exec,
+                    dynamic_loader=dyn_loader,
+                    evolution_validator=evo_validator,
                 )
             except Exception:
                 self.gep_engine = None
@@ -1734,13 +1766,14 @@ class TriOrchestrator:
     def extract_signals(self, steps: List["ReasonStep"], user_input: str) -> List[str]:
         """从推理过程提取可被 curiosity/GEP 使用的信号字符串"""
         signals: List[str] = []
+
         # 2.1 用户输入关键词（作为"需求信号"）
         if user_input:
             for kw in _SIGNAL_KEYWORDS:
-                if kw in user_input.lower():
+                if kw.lower() in user_input.lower():
                     signals.append(f"user_keyword:{kw}")
 
-        # 2.2 工具调用结果
+        # 2.2 工具调用结果（错误 → capability gap；成功 → 确认）
         for s in steps:
             if s.kind == "observation" and s.tool_name:
                 if s.error:
@@ -1748,54 +1781,74 @@ class TriOrchestrator:
                 else:
                     signals.append(f"tool_success:{s.tool_name}")
             elif s.kind == "thought":
-                # 含"不知道/不懂/需要"等词汇 → 知识缺口信号
                 low = str(s.content).lower()
-                for gap in ("不知道", "不懂", "需要", "cannot", "don't know", "not sure"):
+                for gap in ("不知道", "不懂", "需要", "cannot", "don't know", "not sure", "缺少", "没有"):
                     if gap in low:
                         signals.append(f"knowledge_gap:{gap}")
                         break
+
         # 2.3 未知工具 → capability gap
         for s in steps:
-            if s.kind == "observation" and s.error and "未知工具" in str(s.content):
+            if s.kind == "observation" and s.error and ("未知工具" in str(s.content) or "不存在" in str(s.content)):
                 signals.append("capability_gap:unknown_tool")
+
+        # 2.4 推理步骤多但没有 FINAL → 可能需要探索
+        if len(steps) >= 3 and not any(s.kind == "final" for s in steps):
+            signals.append("exploration_needed:no_convergence")
+
         return signals
 
     # ------------------------------------------------------------
     # 桥接 3: Curiosity → exploration goals → prompt
     # ------------------------------------------------------------
     def curiosity_discover_goals(self, current_signals: List[str]) -> List[str]:
-        """基于当前信号，让探索核推荐探索目标"""
+        """基于当前信号生成探索目标"""
         goals: List[str] = []
-        if self.curiosity is None:
-            return goals
+        self._stats["curiosity_signals_consumed"] += len(current_signals)
 
-        try:
-            self._stats["curiosity_signals_consumed"] += len(current_signals)
+        # 有信号 → 基于信号类型生成目标
+        if current_signals:
+            for sig in current_signals:
+                if "tool_failed:" in sig:
+                    tool_name = sig.split("tool_failed:", 1)[1]
+                    goals.append(
+                        f"[探索目标/error] 工具 {tool_name} 失败了，"
+                        f"考虑生成替代实现或修复它的逻辑"
+                    )
+                elif "capability_gap" in sig:
+                    goals.append(
+                        "[探索目标/gap] 发现能力缺口，建议通过 GEP 进化一个新工具"
+                    )
+                elif "exploration_needed" in sig:
+                    goals.append(
+                        "[探索目标/convergence] 推理未收敛，探索替代方案"
+                    )
+                elif "user_keyword:" in sig:
+                    kw = sig.split("user_keyword:", 1)[1]
+                    goals.append(
+                        f"[探索目标/keyword] 用户关心 {kw}，检查现有工具是否覆盖"
+                    )
 
-            # 如果有 explorer，用它生成结构化目标
-            if self.explorer is not None:
-                try:
-                    caps = list(self.tools.names) if self.tools else []
-                    targets = self.explorer.discover_targets({
-                        "current_signals": current_signals,
-                        "known_caps": caps,
-                        "total_reason_cycles": self._stats["reason_cycles"],
-                    })
-                    for t in targets[:3]:
-                        goals.append(
-                            f"[探索目标/{getattr(t, 'reason', 'novelty')}] "
-                            f"{getattr(t, 'target_domain', 'unknown')} "
-                            f"(预期奖励 {getattr(t, 'expected_reward', 0.0):.2f})"
-                        )
-                    return goals
-                except Exception:
-                    pass
-
-            # 退而求其次：直接用 CuriosityDrive.should_explore 做简单判定
+        # 也尝试用 curiosity 启发式
+        if self.curiosity is not None and current_signals:
             if self.curiosity.should_explore(current_signals):
-                goals.append("[探索目标/boredom] 当前输入组合较为新颖，建议下一轮尝试不同策略")
-        except Exception:
-            pass
+                if not goals:
+                    goals.append("[探索目标/curiosity] 好奇心驱动：当前输入新颖，值得探索")
+
+        # 退而求其次：只有当没有信号也没有目标时，才用启发式
+        # 之前改的 fallback 会和信号驱动目标竞争，导致无意义的目标触发闭环推理
+        if not goals and not current_signals and self.tools:
+            known_tools = set(self.tools.names)
+            common_gaps = [
+                ("json", "parse_json", "JSON 解析"),
+                ("http", "fetch_url", "HTTP 请求"),
+                ("shell", "run_shell", "Shell 执行"),
+            ]
+            for tool_kw, suggested_name, desc in common_gaps:
+                if tool_kw not in known_tools:
+                    goals.append(f"[探索目标/gap] 缺少 {desc}，建议进化 {suggested_name}")
+                    break
+
         return goals
 
     # ------------------------------------------------------------
@@ -1806,6 +1859,12 @@ class TriOrchestrator:
                               verbose: bool = False) -> List[str]:
         """调用 GEP 进化核，尝试从 signals 生成新 capability，成功则注入 Agent.tools
 
+        真正闭环：
+        1. 记录当前已注册工具名（快照）
+        2. GEPEngine.run_cycle() → 生成代码 → 沙箱验证 → 工具注册
+        3. 对比快照 diff → 找出新注册的工具名
+        4. 返回新工具名（TriOrchestrator 把它注入给推理核再推理一次）
+
         返回本次新注入的工具名列表（可能为空，表示进化没产出）。
         """
         new_names: List[str] = []
@@ -1814,44 +1873,45 @@ class TriOrchestrator:
 
         try:
             self._stats["gep_cycles"] += 1
-            # 执行一个轻量进化循环
+
+            # 快照：GEP 运行前的工具名
+            tools_before = set(self.tools.names) if self.tools else set()
+
+            # 执行进化循环（GEPEngine 现在有了真实模块，会走 _step_*_real 路径）
             cycle_result = self.gep.run_cycle()
 
-            # 尝试从进化结果中提取"被固化的 capability"
-            # GEPEngine 的 run_cycle 返回 Dict[str, Any]，其中 steps[9]_solidify 常含 retained 信息
-            retained_names: List[str] = []
+            # 对比快照：找出真正新注册的工具
+            tools_after = set(self.tools.names) if self.tools else set()
+            new_tool_names = list(tools_after - tools_before)
+            new_names = [n for n in new_tool_names if n not in self._injected_caps]
+
+            if new_names:
+                for name in new_names:
+                    self._injected_caps.add(name)
+                self._stats["new_capabilities_injected"] += len(new_names)
+                if verbose:
+                    for name in new_names:
+                        print(f"  │  [进化核] ✓ 新工具注册: {name}")
+
+            # 也尝试从 cycle_result 提取 capsule 信息（用于诊断）
             try:
                 steps = cycle_result.get("steps", {}) if isinstance(cycle_result, dict) else {}
-                for step_name, step_val in steps.items():
-                    if isinstance(step_val, dict):
-                        # 尝试从各种字段里抓 retained capability 名
-                        if step_val.get("retained"):
-                            name = step_val.get("gene") or step_val.get("capability") or step_val.get("name")
-                            if name:
-                                retained_names.append(str(name))
-                        if isinstance(step_val.get("retained_genes"), list):
-                            for g in step_val["retained_genes"]:
-                                if isinstance(g, str):
-                                    retained_names.append(g)
+                solidify = steps.get("7_solidify", {})
+                if isinstance(solidify, dict) and solidify.get("solidified"):
+                    self._stats["new_capabilities_injected"] += 1
+                    if verbose:
+                        print(f"  │  [进化核] Capsule 固化成功 (id={solidify.get('capsule_id','?')})")
             except Exception:
                 pass
 
-            # 退而求其次：如果 capability_registry 里有新注册的，与之前记录对比找 diff
-            if not retained_names and self.cap_registry is not None:
-                try:
-                    cap_names = getattr(self.cap_registry, "list_capabilities",
-                                        lambda: [])()
-                    for name in cap_names:
-                        if name not in self._injected_caps:
-                            retained_names.append(str(name))
-                except Exception:
-                    pass
+            if verbose and not new_names:
+                status = cycle_result.get("status", "?")
+                reason = cycle_result.get("steps", {}).get("6_validate", {}).get("reason", "")
+                print(f"  │  [进化核] 本轮状态: {status} — {reason}")
 
-            # 把新 capability 注入 Agent.tools
-            new_names = self._inject_capabilities(retained_names, verbose=verbose)
         except Exception as e:
             if verbose:
-                print(f"  │  [进化核] GEP 运行失败但不阻塞主流程: {e}")
+                print(f"  │  [进化核] 运行失败: {e}")
         return new_names
 
     def _inject_capabilities(self, candidate_names: List[str],
@@ -1949,9 +2009,12 @@ class TriOrchestrator:
             if verbose and self.gep is None:
                 print("  │  （进化核未连接，跳过 Round 3）")
 
-        # ===== 闭环: 如果有新能力/新目标，再让推理核"带着新知识"推理一次 =====
+        # ===== 闭环: 只在 Round 1 未收敛且有新能力/有意义目标时，才再推理一次
+        # 条件：① Round 1 推理未成功 AND ② 有真正的闭环理由（新增 capability 或 明确的探索目标）
+        # 不触发闭环的场景：Round 1 已收敛(有 FINAL)，或只有无关的启发式目标
         final_answer = answer1
-        if all_new_caps or all_goals:
+        if not ok1 and (all_new_caps or all_goals):
+            # 只有 Round 1 失败(无 FINAL) 且有实质性新信息时才做闭环推理
             extra_lines: List[str] = []
             if all_new_caps:
                 extra_lines.append(f"[Agent 内部进化] 本次会话新增能力: {', '.join(all_new_caps)}")
