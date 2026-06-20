@@ -82,6 +82,27 @@ except Exception:  # pragma: no cover
     GEPEngine = None  # type: ignore
     _GEP_AVAILABLE = False
 
+try:
+    from .curiosity import (  # noqa: F401
+        NoveltyScorer, BoredomTracker, CuriosityDrive,
+        ExplorationGoal, CuriosityDrivenExplorer,
+    )
+    _CURIOSITY_AVAILABLE = True
+except Exception:  # pragma: no cover
+    NoveltyScorer = BoredomTracker = CuriosityDrive = None  # type: ignore
+    ExplorationGoal = CuriosityDrivenExplorer = None  # type: ignore
+    _CURIOSITY_AVAILABLE = False
+
+try:
+    from .experience_learner import (  # noqa: F401
+        ExperienceLearner, StrategyOutcome,
+    )
+    _EXPERIENCE_LEARNER_AVAILABLE = True
+except Exception:  # pragma: no cover
+    ExperienceLearner = None  # type: ignore
+    StrategyOutcome = None  # type: ignore
+    _EXPERIENCE_LEARNER_AVAILABLE = False
+
 
 @dataclass
 class AgentResult:
@@ -946,6 +967,7 @@ class Agent:
         self_modifier: Optional["SelfModifier"] = None,
         gep_engine: Optional["GEPEngine"] = None,
         llm_router: Optional[Any] = None,
+        experience_learner: Optional[Any] = None,
     ):
         self.cfg = cfg or load_config()
         self.provider = provider or get_provider(self.cfg.llm)
@@ -1033,14 +1055,66 @@ class Agent:
         else:
             self.self_modifier = None
 
-        # 步骤 5c: GEPEngine（只做状态探查，不自动 run_cycle）
+        # 步骤 5c: GEPEngine（连接到三核融合循环，非"状态探查"）
         self.gep_engine = gep_engine
         if self.gep_engine is None and _GEP_AVAILABLE and GEPEngine is not None:
             try:
-                # 不主动传 cfg/provider —— 由外部设置
-                pass
+                # 优先构造 GEPEngine（用当前 Agent 的 memory_store + cap_registry）
+                self.gep_engine = GEPEngine(
+                    memory=self.memory_store,
+                    llm=self._llm_router,
+                    capability_registry=self.cap_registry,
+                    workspace=ws,
+                )
             except Exception:
-                pass
+                self.gep_engine = None
+
+        # 步骤 5d: Curiosity（三核融合中的探索核）
+        self.curiosity = None
+        self.curiosity_explorer = None
+        if _CURIOSITY_AVAILABLE:
+            try:
+                from superclaw.curiosity import (
+                    NoveltyScorer, BoredomTracker, CuriosityDrive,
+                    CuriosityDrivenExplorer,
+                )
+                scorer = NoveltyScorer()
+                boredom = BoredomTracker()
+                self.curiosity = CuriosityDrive(scorer=scorer, boredom=boredom)
+                if self.cap_registry is not None:
+                    self.curiosity_explorer = CuriosityDrivenExplorer(
+                        curiosity=self.curiosity,
+                        capability_registry=self.cap_registry,
+                        llm_router=self._llm_router,
+                    )
+            except Exception:
+                self.curiosity = None
+                self.curiosity_explorer = None
+
+        # 步骤 5e: ExperienceLearner（三核共享的经验记忆层）
+        self.experience_learner = experience_learner
+        if self.experience_learner is None:
+            try:
+                from superclaw.experience_learner import ExperienceLearner
+                logs_dir = Path(self.tools._workspace) / "experience-logs"
+                logs_dir.mkdir(parents=True, exist_ok=True)
+                self.experience_learner = ExperienceLearner(
+                    logs_dir / f"session-{int(time.time())}.jsonl"
+                )
+            except Exception:
+                self.experience_learner = None
+
+        # 步骤 5f: TriOrchestrator（三核融合自循环编排器）—— 真正的神经通路
+        self.orchestrator = TriOrchestrator(
+            agent=self,
+            reasoner=self.reasoner,
+            gep_engine=self.gep_engine,
+            curiosity=self.curiosity,
+            curiosity_explorer=self.curiosity_explorer,
+            experience_learner=self.experience_learner,
+            cap_registry=self.cap_registry,
+            tools=self.tools,
+        )
 
         # 启动加载核心 md 知识注入上下文
         self._loaded_core_md: List[str] = []
@@ -1056,6 +1130,9 @@ class Agent:
         caps["nanobot_subsystems"] = list(NANOBOT_SUBSYSTEMS) if _NANOBOT_AVAILABLE else []
         caps["self_modifier"] = bool(self.self_modifier)
         caps["gep_engine"] = bool(self.gep_engine)
+        caps["curiosity"] = bool(getattr(self, "curiosity", None))
+        caps["experience_learner"] = bool(getattr(self, "experience_learner", None))
+        caps["orchestrator"] = bool(getattr(self, "orchestrator", None))
         caps["thinker"] = bool(getattr(self, "thinker", None))
         caps["runner"] = bool(getattr(self, "runner", None))
         caps["synthesizer"] = bool(getattr(self, "synthesizer", None))
@@ -1367,19 +1444,33 @@ class Agent:
 
         extra_context = "\n".join(extra_ctx_lines) if extra_ctx_lines else ""
 
-        # ========== 步骤 4-5-6: 真正的多步 ReAct 推理引擎 —— 取代 LLM 转发器 ==========
-        # 关键点:
-        #   - LLM 每轮都能看到历史 Observation（工具结果）—— 让它"边观察边思考"
-        #   - Agent 执行工具（执行权在 Agent）—— 不是 LLM 假装调用
-        #   - 最终 FINAL 必须由 LLM 在吸收所有 Observation 后输出
-        #   - max_iterations 控制 LLM 调用次数（对应旧代码中的 iterations 语义）
-        reasoning_answer, steps, success = self.reasoner.reason(
-            user_input=user_input,
-            extra_context=extra_context,
-            verbose=verbose,
-            # 强制使用调用方的 max_iterations 而不是 Agent 默认
-            _override_max_steps=max_iter,
-        )
+        # ========== 步骤 4-5-6: 三核融合自循环（TriOrchestrator）—— 真正的推理+探索+进化闭环 ==========
+        #  与旧代码的区别:
+        #   - 旧: 只调一次 reasoner.reason()—— LLM 一轮推理，结束
+        #   - 新: orchestrator.run_loop()—— 推理核 → 探索核 → 进化核 → 推理核 闭环:
+        #        Round 1: 推理核 (ReasonSteps)
+        #        Round 2: 探索核 (Curiosity → ExplorationGoals)
+        #        Round 3: 进化核 (GEPEngine → 新 capability 注入 tools)
+        #        如 Round 2/3 产出新信息 → 推理核"带着新知识"再推理一次（可选）
+        orchestrator = getattr(self, "orchestrator", None)
+        if orchestrator is not None:
+            reasoning_answer, steps, new_caps, goals = orchestrator.run_loop(
+                user_input=user_input,
+                extra_context_base=extra_context,
+                verbose=verbose,
+                _override_max_steps=max_iter,  # 强制限制 LLM 推理步数
+            )
+            # 新能力/目标记录到 result.tools_used 用于调试
+            if new_caps:
+                result.tools_used.extend(new_caps)
+        else:
+            # 退化路径（如果 orchestrator 没初始化）：回退到单层推理
+            reasoning_answer, steps, _success = self.reasoner.reason(
+                user_input=user_input,
+                extra_context=extra_context,
+                verbose=verbose,
+                _override_max_steps=max_iter,
+            )
 
         # 把 steps 映射到 result
         used_tools: List[str] = []
@@ -1391,7 +1482,9 @@ class Agent:
                 obs_outputs.append(str(s.tool_result)[:500] if s.tool_result else "")
         result.tools_used = used_tools
         result.tool_outputs = obs_outputs
-        # iterations = LLM 被调用次数（即非 observation 的 step 数）
+        # iterations = LLM 决策次数（= 非 observation 的 step 数）
+        # 注意: 达到 max_steps 后"再调 LLM 总结"那次不算入 iterations
+        #       （它不在 for loop 里，也不写入 steps），所以这里简单统计即可
         result.iterations = sum(1 for s in steps if s.kind != "observation")
 
         # ========== 步骤 5 补充（可选）: nanobot 同步 + self_modify 状态 ==========
@@ -1476,4 +1569,400 @@ class Agent:
             tools_line = ", ".join(dict.fromkeys(agent_result.tools_used)) if agent_result.tools_used else "无"
             print(f"{agent_result.content}")
             print(f"  [工具: {tools_line} | 迭代: {agent_result.iterations} | 用时: {agent_result.total_time_ms}ms]\n")
+
+
+# ======================================================================
+# TriOrchestrator —— 三核融合自循环编排器
+# ======================================================================
+# 推理核（ReAct）  产出 ReasonSteps → 写入 ExperienceLearner
+# 探索核（Curiosity） 从 ReasonSteps 提取 signals → 生成 ExplorationGoals
+# 进化核（GEPEngine）  从 ExperienceLearner 读取 outcome → 提取信号 → 进化 capability
+# 三核共享的是 ExperienceLearner —— 这是它们之间的"神经通路"
+# ======================================================================
+
+@dataclass
+class OrchestratorRound:
+    """单轮三核循环记录"""
+    round_id: int
+    reason_steps: List["ReasonStep"]
+    reasoning_answer: str
+    curiosity_goals: List[Any]
+    gep_outcome: Optional[Dict[str, Any]]
+    new_capabilities: List[str]
+    time_ms: int
+
+
+class TriOrchestrator:
+    """三核融合自循环编排器 —— 真正让 ReAct 推理 / GEP 进化 / Curiosity 探索形成闭环。
+
+    核心循环（默认 2 轮，可配置）：
+        Round 1: 推理核（agent.reasoner）基于原始输入推理 → 产出 ReasonSteps
+            ↓ 记录为 experience + signals
+        Round 2: 探索核（curiosity.explorer）发现目标 → 进化核（gep_engine）产生新 capability
+            ↓ 新 capability 注入 Agent.tools，目标注入 prompt
+        Round 3（可选）: 推理核"带着新知识"再推理一次 → 产出最终答案
+
+    关键桥接：
+        reason_steps → experience_learner.record()
+        reason_steps → signal_strings → curiosity.should_explore()
+        gep_engine.run_cycle() → 新 capability → tools.register()
+        exploration_goals + 新工具名 → 注入 extra_context 给推理核
+    """
+
+    def __init__(self,
+                 agent: "Agent",
+                 reasoner: "AgentReasoningEngine",
+                 gep_engine: Optional["Any"] = None,
+                 curiosity: Optional["Any"] = None,
+                 curiosity_explorer: Optional["Any"] = None,
+                 experience_learner: Optional["Any"] = None,
+                 cap_registry: Optional["Any"] = None,
+                 tools: Optional["Any"] = None,
+                 max_rounds: int = 2):
+        self.agent = agent
+        self.reasoner = reasoner
+        self.gep = gep_engine
+        self.curiosity = curiosity
+        self.explorer = curiosity_explorer
+        self.experience = experience_learner
+        self.cap_registry = cap_registry
+        self.tools = tools
+        self.max_rounds = max_rounds
+
+        # 已注入的 capability 集合（避免重复注入）
+        self._injected_caps: Set[str] = set()
+
+        # 统计：三核各自的活跃程度（给 verbose 输出看）
+        self._stats: Dict[str, int] = {
+            "reason_cycles": 0,
+            "curiosity_signals_consumed": 0,
+            "gep_cycles": 0,
+            "new_capabilities_injected": 0,
+        }
+
+    # ------------------------------------------------------------
+    # 桥接 1: ReasonSteps → ExperienceLearner
+    # ------------------------------------------------------------
+    def record_reason_experience(self, steps: List["ReasonStep"],
+                                  user_input: str,
+                                  strategy: str = "balanced") -> None:
+        """把推理过程记录为 experience —— GEP 进化核下一轮就能据此提取信号"""
+        if self.experience is None:
+            return
+        try:
+            # 评估推理是否"有成效"
+            #   - 有 action 且成功 → score 高
+            #   - 纯 thought 没调用工具 → 中等
+            #   - 有 error 或 未知工具 → score 低
+            tool_calls = [s for s in steps if s.kind == "action"]
+            success_calls = [s for s in steps if s.kind == "observation" and not s.error]
+            errors = [s for s in steps if s.kind == "observation" and s.error]
+
+            if tool_calls and success_calls and not errors:
+                score = 0.85
+                retained = True
+            elif tool_calls:
+                score = 0.5
+                retained = len(success_calls) > 0
+            else:
+                score = 0.3
+                retained = False
+
+            category = "explore" if errors or not tool_calls else "reason"
+            self._stats["reason_cycles"] += 1
+
+            outcome_cls = self._get_strategy_outcome_cls()
+            if outcome_cls is not None:
+                outcome = outcome_cls(
+                    strategy=strategy,
+                    category=category,
+                    score=score,
+                    retained=retained,
+                    timestamp=datetime.now().isoformat(),
+                    cycle=self._stats["reason_cycles"],
+                    signal_count=len(steps),
+                )
+                self.experience.record(outcome)
+        except Exception:
+            # 经验记录失败不影响主流程
+            pass
+
+    def _get_strategy_outcome_cls(self) -> Optional[Any]:
+        """懒加载 StrategyOutcome 类（只有 experience_learner 模块可用时）"""
+        try:
+            from superclaw.experience_learner import StrategyOutcome
+            return StrategyOutcome
+        except Exception:
+            return None
+
+    # ------------------------------------------------------------
+    # 桥接 2: ReasonSteps → curiosity signals
+    # ------------------------------------------------------------
+    def extract_signals(self, steps: List["ReasonStep"], user_input: str) -> List[str]:
+        """从推理过程提取可被 curiosity/GEP 使用的信号字符串"""
+        signals: List[str] = []
+        # 2.1 用户输入关键词（作为"需求信号"）
+        if user_input:
+            for kw in _SIGNAL_KEYWORDS:
+                if kw in user_input.lower():
+                    signals.append(f"user_keyword:{kw}")
+
+        # 2.2 工具调用结果
+        for s in steps:
+            if s.kind == "observation" and s.tool_name:
+                if s.error:
+                    signals.append(f"tool_failed:{s.tool_name}")
+                else:
+                    signals.append(f"tool_success:{s.tool_name}")
+            elif s.kind == "thought":
+                # 含"不知道/不懂/需要"等词汇 → 知识缺口信号
+                low = str(s.content).lower()
+                for gap in ("不知道", "不懂", "需要", "cannot", "don't know", "not sure"):
+                    if gap in low:
+                        signals.append(f"knowledge_gap:{gap}")
+                        break
+        # 2.3 未知工具 → capability gap
+        for s in steps:
+            if s.kind == "observation" and s.error and "未知工具" in str(s.content):
+                signals.append("capability_gap:unknown_tool")
+        return signals
+
+    # ------------------------------------------------------------
+    # 桥接 3: Curiosity → exploration goals → prompt
+    # ------------------------------------------------------------
+    def curiosity_discover_goals(self, current_signals: List[str]) -> List[str]:
+        """基于当前信号，让探索核推荐探索目标"""
+        goals: List[str] = []
+        if self.curiosity is None:
+            return goals
+
+        try:
+            self._stats["curiosity_signals_consumed"] += len(current_signals)
+
+            # 如果有 explorer，用它生成结构化目标
+            if self.explorer is not None:
+                try:
+                    caps = list(self.tools.names) if self.tools else []
+                    targets = self.explorer.discover_targets({
+                        "current_signals": current_signals,
+                        "known_caps": caps,
+                        "total_reason_cycles": self._stats["reason_cycles"],
+                    })
+                    for t in targets[:3]:
+                        goals.append(
+                            f"[探索目标/{getattr(t, 'reason', 'novelty')}] "
+                            f"{getattr(t, 'target_domain', 'unknown')} "
+                            f"(预期奖励 {getattr(t, 'expected_reward', 0.0):.2f})"
+                        )
+                    return goals
+                except Exception:
+                    pass
+
+            # 退而求其次：直接用 CuriosityDrive.should_explore 做简单判定
+            if self.curiosity.should_explore(current_signals):
+                goals.append("[探索目标/boredom] 当前输入组合较为新颖，建议下一轮尝试不同策略")
+        except Exception:
+            pass
+        return goals
+
+    # ------------------------------------------------------------
+    # 桥接 4: GEPEngine → 进化新 capability → 注入 tools
+    # ------------------------------------------------------------
+    def gep_evolve_capability(self, signals: List[str],
+                              user_input: str,
+                              verbose: bool = False) -> List[str]:
+        """调用 GEP 进化核，尝试从 signals 生成新 capability，成功则注入 Agent.tools
+
+        返回本次新注入的工具名列表（可能为空，表示进化没产出）。
+        """
+        new_names: List[str] = []
+        if self.gep is None:
+            return new_names
+
+        try:
+            self._stats["gep_cycles"] += 1
+            # 执行一个轻量进化循环
+            cycle_result = self.gep.run_cycle()
+
+            # 尝试从进化结果中提取"被固化的 capability"
+            # GEPEngine 的 run_cycle 返回 Dict[str, Any]，其中 steps[9]_solidify 常含 retained 信息
+            retained_names: List[str] = []
+            try:
+                steps = cycle_result.get("steps", {}) if isinstance(cycle_result, dict) else {}
+                for step_name, step_val in steps.items():
+                    if isinstance(step_val, dict):
+                        # 尝试从各种字段里抓 retained capability 名
+                        if step_val.get("retained"):
+                            name = step_val.get("gene") or step_val.get("capability") or step_val.get("name")
+                            if name:
+                                retained_names.append(str(name))
+                        if isinstance(step_val.get("retained_genes"), list):
+                            for g in step_val["retained_genes"]:
+                                if isinstance(g, str):
+                                    retained_names.append(g)
+            except Exception:
+                pass
+
+            # 退而求其次：如果 capability_registry 里有新注册的，与之前记录对比找 diff
+            if not retained_names and self.cap_registry is not None:
+                try:
+                    cap_names = getattr(self.cap_registry, "list_capabilities",
+                                        lambda: [])()
+                    for name in cap_names:
+                        if name not in self._injected_caps:
+                            retained_names.append(str(name))
+                except Exception:
+                    pass
+
+            # 把新 capability 注入 Agent.tools
+            new_names = self._inject_capabilities(retained_names, verbose=verbose)
+        except Exception as e:
+            if verbose:
+                print(f"  │  [进化核] GEP 运行失败但不阻塞主流程: {e}")
+        return new_names
+
+    def _inject_capabilities(self, candidate_names: List[str],
+                             *, verbose: bool = False) -> List[str]:
+        """把 capability_registry 里的候选能力注册到 Agent.tools"""
+        injected: List[str] = []
+        if self.tools is None or self.cap_registry is None:
+            return injected
+
+        for name in candidate_names:
+            if not name or name in self._injected_caps:
+                continue
+            # 只注册 capability_registry 里确实存在的
+            try:
+                cap = self.cap_registry.get(name) if hasattr(self.cap_registry, "get") else None
+                if cap is None:
+                    continue
+                func = getattr(cap, "func", None) or getattr(cap, "callable", None)
+                if func is None:
+                    continue
+                desc = getattr(cap, "description", "") or f"GEP 进化的 {name} 能力"
+                self.tools.register(name, func, desc)
+                self._injected_caps.add(name)
+                injected.append(name)
+                self._stats["new_capabilities_injected"] += 1
+                if verbose:
+                    print(f"  │  [进化核] ✓ 新能力注入: {name}")
+            except Exception:
+                continue
+        return injected
+
+    # ------------------------------------------------------------
+    # 主入口: 三核融合循环
+    # ------------------------------------------------------------
+    def run_loop(self, user_input: str,
+                 extra_context_base: str = "",
+                 *, verbose: bool = False,
+                 force_gep: bool = False,
+                 _override_max_steps: Optional[int] = None) -> Tuple[str, List["ReasonStep"], List[str], List[str]]:
+        """执行三核融合自循环。
+
+        返回: (final_answer, all_reason_steps, new_capabilities, curiosity_goals)
+        """
+        all_steps: List["ReasonStep"] = []
+        all_goals: List[str] = []
+        all_new_caps: List[str] = []
+        extra_ctx = extra_context_base
+
+        # ===== Round 1: 推理核（原始输入） =====
+        if verbose:
+            print(f"\n  ╔══════════════════════════════════════════╗")
+            print(f"  ║  🧠 三核融合循环 · Round 1/3 · 推理核     ║")
+            print(f"  ╚══════════════════════════════════════════╝")
+
+        answer1, steps1, ok1 = self.reasoner.reason(
+            user_input=user_input,
+            extra_context=extra_ctx,
+            verbose=verbose,
+            _override_max_steps=_override_max_steps,
+        )
+        all_steps.extend(steps1)
+
+        # 记录为经验（GEP 下一轮的粮食）
+        self.record_reason_experience(steps1, user_input)
+
+        # 提取信号（给 curiosity + GEP 用）
+        signals = self.extract_signals(steps1, user_input)
+
+        # ===== Round 2: 探索核（发现目标） =====
+        if verbose:
+            print(f"\n  ╔══════════════════════════════════════════╗")
+            print(f"  ║  🔍 三核融合循环 · Round 2/3 · 探索核     ║")
+            print(f"  ╚══════════════════════════════════════════╝")
+            if signals:
+                print(f"  │  当前信号: {signals[:5]}...")
+        goals = self.curiosity_discover_goals(signals)
+        if goals:
+            all_goals.extend(goals)
+            if verbose:
+                for g in goals:
+                    print(f"  │  {g}")
+        elif verbose:
+            print("  │  暂无探索目标")
+
+        # ===== Round 3: 进化核（生成新能力） =====
+        do_gep = force_gep or bool(signals) or self.gep is not None
+        if do_gep and self.gep is not None:
+            if verbose:
+                print(f"\n  ╔══════════════════════════════════════════╗")
+                print(f"  ║  🧬 三核融合循环 · Round 3/3 · 进化核      ║")
+                print(f"  ╚══════════════════════════════════════════╝")
+            new_caps = self.gep_evolve_capability(signals, user_input, verbose=verbose)
+            all_new_caps.extend(new_caps)
+        else:
+            if verbose and self.gep is None:
+                print("  │  （进化核未连接，跳过 Round 3）")
+
+        # ===== 闭环: 如果有新能力/新目标，再让推理核"带着新知识"推理一次 =====
+        final_answer = answer1
+        if all_new_caps or all_goals:
+            extra_lines: List[str] = []
+            if all_new_caps:
+                extra_lines.append(f"[Agent 内部进化] 本次会话新增能力: {', '.join(all_new_caps)}")
+            if all_goals:
+                extra_lines.append("[Agent 内部探索] 系统建议关注:")
+                extra_lines.extend([f"  - {g}" for g in all_goals])
+            extra_ctx_new = "\n".join(extra_lines)
+            if extra_ctx:
+                extra_ctx_new = extra_ctx + "\n" + extra_ctx_new
+
+            if verbose:
+                print(f"\n  ╔══════════════════════════════════════════╗")
+                print(f"  ║  🔄 三核融合循环 · 最终推理（带新知识）    ║")
+                print(f"  ╚══════════════════════════════════════════╝")
+
+            answer2, steps2, ok2 = self.reasoner.reason(
+                user_input=user_input,
+                extra_context=extra_ctx_new,
+                verbose=verbose,
+            )
+            all_steps.extend(steps2)
+            self.record_reason_experience(steps2, user_input, strategy="post_evolution")
+            # 如果第二次推理收敛了就用它，否则还回第一次的
+            if ok2:
+                final_answer = answer2
+
+        if verbose:
+            print(f"\n  ┌─────────────────────────────────────────┐")
+            print(f"  │  📊 三核融合循环统计                       │")
+            print(f"  │  推理轮次: {self._stats['reason_cycles']}")
+            print(f"  │  探索信号: {self._stats['curiosity_signals_consumed']}")
+            print(f"  │  进化轮次: {self._stats['gep_cycles']}")
+            print(f"  │  新能力注入: {self._stats['new_capabilities_injected']}")
+            print(f"  │  探索目标数: {len(all_goals)}")
+            print(f"  └─────────────────────────────────────────┘\n")
+
+        return final_answer, all_steps, all_new_caps, all_goals
+
+
+# 用于从用户输入 / ReasonSteps 中识别信号的关键词表
+_SIGNAL_KEYWORDS: List[str] = [
+    "read", "file", "read_file", "shell", "execute", "run",
+    "weather", "天气", "search", "搜索", "parse", "解析",
+    "json", "http", "web", "记忆", "memory", "进化", "evolve",
+    "capability", "能力", "工具", "tool",
+]
 
