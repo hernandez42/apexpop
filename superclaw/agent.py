@@ -25,8 +25,9 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logging.basicConfig(
     level=logging.INFO,
@@ -1869,9 +1870,9 @@ class TriOrchestrator:
 
         # ===== Round 1: 推理核（原始输入） =====
         if verbose:
-            print(f"\n  ╔══════════════════════════════════════════╗")
-            print(f"  ║  🧠 三核融合循环 · Round 1/3 · 推理核     ║")
-            print(f"  ╚══════════════════════════════════════════╝")
+            print("\n  ╔══════════════════════════════════════════╗")
+            print("  ║  🧠 三核融合循环 · Round 1/3 · 推理核     ║")
+            print("  ╚══════════════════════════════════════════╝")
 
         answer1, steps1, ok1 = self.reasoner.reason(
             user_input=user_input,
@@ -1889,9 +1890,9 @@ class TriOrchestrator:
 
         # ===== Round 2: 探索核（发现目标） =====
         if verbose:
-            print(f"\n  ╔══════════════════════════════════════════╗")
-            print(f"  ║  🔍 三核融合循环 · Round 2/3 · 探索核     ║")
-            print(f"  ╚══════════════════════════════════════════╝")
+            print("\n  ╔══════════════════════════════════════════╗")
+            print("  ║  🔍 三核融合循环 · Round 2/3 · 探索核     ║")
+            print("  ╚══════════════════════════════════════════╝")
             if signals:
                 print(f"  │  当前信号: {signals[:5]}...")
         goals = self.curiosity_discover_goals(signals)
@@ -1907,9 +1908,9 @@ class TriOrchestrator:
         do_gep = force_gep or bool(signals) or self.gep is not None
         if do_gep and self.gep is not None:
             if verbose:
-                print(f"\n  ╔══════════════════════════════════════════╗")
-                print(f"  ║  🧬 三核融合循环 · Round 3/3 · 进化核      ║")
-                print(f"  ╚══════════════════════════════════════════╝")
+                print("\n  ╔══════════════════════════════════════════╗")
+                print("  ║  🧬 三核融合循环 · Round 3/3 · 进化核      ║")
+                print("  ╚══════════════════════════════════════════╝")
             new_caps = self.gep_evolve_capability(signals, user_input, verbose=verbose)
             all_new_caps.extend(new_caps)
         else:
@@ -1930,9 +1931,9 @@ class TriOrchestrator:
                 extra_ctx_new = extra_ctx + "\n" + extra_ctx_new
 
             if verbose:
-                print(f"\n  ╔══════════════════════════════════════════╗")
-                print(f"  ║  🔄 三核融合循环 · 最终推理（带新知识）    ║")
-                print(f"  ╚══════════════════════════════════════════╝")
+                print("\n  ╔══════════════════════════════════════════╗")
+                print("  ║  🔄 三核融合循环 · 最终推理（带新知识）    ║")
+                print("  ╚══════════════════════════════════════════╝")
 
             answer2, steps2, ok2 = self.reasoner.reason(
                 user_input=user_input,
@@ -1946,14 +1947,14 @@ class TriOrchestrator:
                 final_answer = answer2
 
         if verbose:
-            print(f"\n  ┌─────────────────────────────────────────┐")
-            print(f"  │  📊 三核融合循环统计                       │")
+            print("\n  ┌─────────────────────────────────────────┐")
+            print("  │  📊 三核融合循环统计                       │")
             print(f"  │  推理轮次: {self._stats['reason_cycles']}")
             print(f"  │  探索信号: {self._stats['curiosity_signals_consumed']}")
             print(f"  │  进化轮次: {self._stats['gep_cycles']}")
             print(f"  │  新能力注入: {self._stats['new_capabilities_injected']}")
             print(f"  │  探索目标数: {len(all_goals)}")
-            print(f"  └─────────────────────────────────────────┘\n")
+            print("  └─────────────────────────────────────────┘\n")
 
         return final_answer, all_steps, all_new_caps, all_goals
 
