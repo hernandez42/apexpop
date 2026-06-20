@@ -11,6 +11,7 @@ superclaw CLI 入口
   python3 cli.py --config path.json        指定配置
   python3 -m superclaw --evolve           运行一次进化循环
   python3 cli.py --schedule --interval 60  启动定时调度
+  python3 cli.py --daemon --interval 120   启动自省守护进程（不调用 LLM）
 """
 import argparse
 import sys
@@ -192,13 +193,16 @@ def main() -> int:
                        help="运行一次进化循环")
     parser.add_argument("--schedule", action="store_true",
                        help="启动定时调度")
+    parser.add_argument("--daemon", action="store_true",
+                       help="启动自省守护循环（不调用 LLM）")
     parser.add_argument("--mode", default="cycle",
                        choices=["cycle", "self", "curious", "experience",
                                 "feedback", "multi"],
                        help="进化模式（默认 cycle）")
     parser.add_argument("--interval", type=int, default=3600,
                        help="调度间隔秒数（默认 3600）")
-
+    parser.add_argument("--max-cycles", type=int, default=None,
+                       help="daemon 模式下最多跑 N 轮（默认无限）")
     args = parser.parse_args()
 
     # 列出 providers
@@ -230,6 +234,15 @@ def main() -> int:
             cfg.llm.api_key = os.environ[env_key]
     if args.model:
         cfg.llm.model = args.model
+
+    # 自省守护模式（在进化/调度之前检查，避免与 --interval 冲突）
+    if args.daemon:
+        from superclaw.daemon import run_daemon
+        return run_daemon(
+            Path(cfg.workspace),
+            interval_sec=args.interval,
+            max_cycles=args.max_cycles,
+        )
 
     # 进化模式
     if args.evolve:
