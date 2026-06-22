@@ -3,8 +3,7 @@ name: SuperClaw Backup
 on:
   push:
     branches: [ master ]
-  schedule:
-    - cron: '0 */6 * * *'
+  # 定时任务已禁用 2026-06-21
 
 jobs:
   backup:
@@ -18,10 +17,8 @@ jobs:
       run: |
         python3 -c "
         import json, os
-        # Check gene_db integrity
         if os.path.exists('memory/gene_db.json') or os.path.exists('memory/shared-state.json'):
             print('State files present')
-        # Validate Python modules
         import ast
         ok = 0
         for f in os.listdir('core-dna'):
